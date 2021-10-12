@@ -210,6 +210,7 @@
 			let gameSize = VS.World.getGameSize();
 			let windowSize = VS.Client.getWindowSize();
 			let mousePos = VS.Client.getMousePos();
+			VS.Client.setMapView(VS.Client.mapView);
 			
 			// windowSize
 			this.uniforms.uWindowSize.x = windowSize.width;
@@ -450,7 +451,6 @@
 							var light = this.createLight(pSettings);
 							light.owner = pDiob;
 							pDiob.attachedLights.push(light);
-							VS.Client.setMapView(VS.Client.mapView);
 						} else {
 							console.error('aLight Module: Invalid variable type passed for the %csettings', 'font-weight: bold', 'parameter. Aborted');
 							return;	
