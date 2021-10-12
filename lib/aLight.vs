@@ -248,7 +248,7 @@
 			this.uniforms.uLights[(this.uniforms.uLightsCount * LIGHT_INDEX_GAP) + 5] = pLight.shaderID;
 			this.uniforms.uLightsCount++;
 			if (this.debugging) {
-				VS.Client.aMes('Active Lights: ' + this.uniforms.uLightsCount);
+				VS.Client.aMes('aLight [Lights]: ' + this.uniforms.uLightsCount);
 			}
 		}
 
@@ -277,7 +277,7 @@
 				return;
 			}
 			if (this.debugging) {
-				VS.Client.aMes('Active Lights: ' + this.uniforms.uLightsCount);
+				VS.Client.aMes('aLight [Lights]: ' + this.uniforms.uLightsCount);
 			}
 		}
 
@@ -450,6 +450,7 @@
 							var light = this.createLight(pSettings);
 							light.owner = pDiob;
 							pDiob.attachedLights.push(light);
+							VS.Client.setMapView(VS.Client.mapView);
 						} else {
 							console.error('aLight Module: Invalid variable type passed for the %csettings', 'font-weight: bold', 'parameter. Aborted');
 							return;	
@@ -597,6 +598,7 @@
 
 		VS.Client.addFilter('LightShader', 'custom', { 'filter': aLight.createLightShader(lightVertex, lightFrag, aLight.uniforms) });
 		var rafLight = requestAnimationFrame(aLight.update.bind(aLight));
+		aLight.toggleDebug();
 	}
 }
 )();
