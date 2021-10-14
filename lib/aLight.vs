@@ -154,6 +154,9 @@
 		VS.Client.aLight = aLight;
 		VS.Client.___EVITCA_aLight = true;
 
+		// the game's size
+		const gameSize = VS.World.getGameSize();
+		
 		// array full of lights
 		aLight.lights = [];
 		// array full of light ids
@@ -170,8 +173,8 @@
 			'uLightsCount': 0,
 			'uTime': 0,
 			'uScreenPos': { 'x': 0, 'y': 0 },
-			'uResolution': { 'x': VS.World.getGameSize().width, 'y': VS.World.getGameSize().height },
-			'uWindowSize': { 'x': VS.World.getGameSize().width, 'y': VS.World.getGameSize().height },
+			'uResolution': { 'x': gameSize.width, 'y': gameSize.height },
+			'uWindowSize': { 'x': gameSize.width, 'y': gameSize.height },
 			'uMapView': [1, 1, 0.5, 0.5], // scaleX, scaleY, anchor.x, anchor.y
 			'uMousePos': { 'x': 1, 'y': 1 },
 			'uMapPos': { 'x': 1, 'y': 1 },
@@ -207,7 +210,7 @@
 			let screenPos = VS.Client.getScreenPos();
 			let screenScale = VS.Client.getScreenScale();
 			let mapView = VS.Client.mapView;
-			let gameSize = VS.World.getGameSize();
+			// let gameSize = VS.World.getGameSize();
 			let windowSize = VS.Client.getWindowSize();
 			let mousePos = VS.Client.getMousePos();
 			VS.Client.setMapView(VS.Client.mapView);
@@ -217,8 +220,8 @@
 			this.uniforms.uWindowSize.y = windowSize.height;
 			
 			// mapView
-			this.uniforms.uMapView[0] = mapView.scale.x;
-			this.uniforms.uMapView[1] = mapView.scale.y;
+			this.uniforms.uMapView[0] = (mainM.mapScaleWidth > 1 ? mainM.mapScaleWidth : mapView.scale.x);
+			this.uniforms.uMapView[1] = (mainM.mapScaleHeight > 1 ? mainM.mapScaleHeight : mapView.scale.y);
 			this.uniforms.uMapView[2] = mapView.anchor.x;
 			this.uniforms.uMapView[3] = mapView.anchor.y;
 
@@ -598,7 +601,7 @@
 
 		VS.Client.addFilter('LightShader', 'custom', { 'filter': aLight.createLightShader(lightVertex, lightFrag, aLight.uniforms) });
 		var rafLight = requestAnimationFrame(aLight.update.bind(aLight));
-		aLight.toggleDebug();
+		// aLight.toggleDebug();
 	}
 }
 )();
