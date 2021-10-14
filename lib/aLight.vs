@@ -220,8 +220,8 @@
 			this.uniforms.uWindowSize.y = windowSize.height;
 			
 			// mapView
-			this.uniforms.uMapView[0] = (mainM.mapScaleWidth > 1 ? mainM.mapScaleWidth : mapView.scale.x);
-			this.uniforms.uMapView[1] = (mainM.mapScaleHeight > 1 ? mainM.mapScaleHeight : mapView.scale.y);
+			this.uniforms.uMapView[0] = mainM.mapScaleWidth;
+			this.uniforms.uMapView[1] = mainM.mapScaleHeight;
 			this.uniforms.uMapView[2] = mapView.anchor.x;
 			this.uniforms.uMapView[3] = mapView.anchor.y;
 
