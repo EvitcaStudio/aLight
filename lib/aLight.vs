@@ -10,7 +10,7 @@
 	let foundClient;
 
 	let engineWaitId = setInterval(function() {
-		if (VS.Client && !foundClient) {
+		if (VS.Client && !foundClient && VS.World.global) {
 			foundClient = true;
 			buildLight();
 			gl = document.getElementById('game_canvas').getContext('webgl2');
@@ -168,7 +168,7 @@
 
 		aLight.uniforms = {
 			'uAmbientColor': 0,
-			'uGlobalLight': 0.001, // linux devices need this value to be above 0 to render
+			'uGlobalLight': 0, // linux devices need this value to be above 0 to render?
 			'uLights': new Float64Array(1012),
 			'uLightsCount': 0,
 			'uTime': 0,
