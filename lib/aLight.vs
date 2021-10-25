@@ -10,7 +10,7 @@
 	let foundClient;
 
 	let engineWaitId = setInterval(function() {
-		if (VS.Client && !foundClient && VS.World.global) {
+		if (VS.Client && VS.Client.___EVITCA_aUtils && !foundClient && VS.World.global) {
 			foundClient = true;
 			buildLight();
 			gl = document.getElementById('game_canvas').getContext('webgl2');
