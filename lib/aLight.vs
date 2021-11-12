@@ -378,13 +378,7 @@
 			// color
 			if (pSettings?.color) {
 				if (typeof(pSettings?.color) === 'number') {
-					if (String(pSettings.color).length <= 8) {
-						color = Math.round(10*Math.abs(pSettings.color))/10;
-					} else {
-						if (this.debugging) {
-							console.warn('aLight Module [ID: \'' + id + '\']: Invalid %csettings.color format', 'font-weight: bold', 'Expected a decimal color. Reverted to default');
-						}
-					}
+					color = VS.World.global.aUtils.grabColor(pSettings.color).decimal;
 				} else {
 					if (this.debugging) {
 						console.warn('aLight Module [ID: \'' + id + '\']: Invalid variable type passed for the %csettings.color', 'font-weight: bold', 'property. Reverted to default');
@@ -601,7 +595,6 @@
 
 		VS.Client.addFilter('LightShader', 'custom', { 'filter': aLight.createLightShader(lightVertex, lightFrag, aLight.uniforms) });
 		var rafLight = requestAnimationFrame(aLight.update.bind(aLight));
-		// aLight.toggleDebug();
 	}
 }
 )();
