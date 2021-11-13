@@ -181,6 +181,11 @@
 			'uScreenScale': { 'x': 1, 'y': 1 }
 		}
 
+		// toggle the debug mode, which allows descriptive text to be shown when things of notice happen
+		aLight.toggleDebug = function() {
+			this.debugging = (this.debugging ? false : true);
+		}
+
 		aLight.generateToken = function(pTokenLength = 7) {
 			var token = '';
 			var chars = '0123456789';
@@ -437,12 +442,12 @@
 							}
 							if (pSettings.xPos === undefined) {
 								if (pDiob.xPos || pDiob.xPos === 0) {
-									pSettings.xPos = pDiob.xPos;
+									pSettings.xPos = parseInt(pDiob.xPos);
 								}
 							}
 							if (pSettings.yPos === undefined) {
 								if (pDiob.yPos || pDiob.yPos === 0) {
-									pSettings.yPos = pDiob.yPos;
+									pSettings.yPos = parseInt(pDiob.yPos);
 								}
 							}
 							var light = this.createLight(pSettings);
@@ -586,11 +591,6 @@
 			this.uniforms.uTime = pT / 300;
 			this.updateShaderMisc();
 			rafLight = requestAnimationFrame(this.update.bind(this));
-		}
-
-		// toggle the debug mode, which allows descriptive text to be shown when things of notice happen
-		aLight.toggleDebug = function() {
-			this.debugging = (this.debugging ? false : true);
 		}
 
 		VS.Client.addFilter('LightShader', 'custom', { 'filter': aLight.createLightShader(lightVertex, lightFrag, aLight.uniforms) });
