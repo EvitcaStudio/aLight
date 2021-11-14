@@ -167,7 +167,7 @@
 		aLight.debugging = false;
 
 		aLight.uniforms = {
-			'uAmbientColor': 0,
+			'uAmbientColor': VS.World.global.aUtils.grabColor('#000000').decimal,
 			'uGlobalLight': 0, // linux devices need this value to be above 0 to render?
 			'uLights': new Float64Array(1012),
 			'uLightsCount': 0,
