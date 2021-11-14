@@ -299,7 +299,7 @@
 			}
 			let xPos;
 			let yPos;
-			let color = 16777215;
+			let color = VS.World.global.aUtils.grabColor('#ffffff').decimal;
 			let offset = { 'x': 0, 'y': 0 };
 			let size = 1;
 			let brightness = 0;
