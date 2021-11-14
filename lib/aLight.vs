@@ -562,18 +562,9 @@
 		aLight.adjustAmbience = function(pAmbience = 0) {
 			if (pAmbience || pAmbience === 0) {
 				if (typeof(pAmbience) === 'number') {
-					if (String(pAmbience).length <= 8) {
-						this.uniforms.uAmbientColor = Math.round(pAmbience);
-						return;
-					} else {
-						if (this.debugging) {
-							console.warn('aLight Module: Invalid %cambience format', 'font-weight: bold', 'Expected a decimal color. Reverted to default');
-						}
-						this.uniforms.uAmbientColor = 0;
-						return;
-					}
+					this.uniforms.uAmbientColor = VS.World.global.aUtils.grabColor(pAmbience).decimal;
 				} else {
-					console.error('aLight Module: No %cambience', 'font-weight: bold', 'parameter passed. Aborted');
+					console.error('aLight Module: Invalid %cambience format', 'font-weight: bold', 'Expected a decimal color. Reverted to default');
 					return;
 				}
 			} else {
