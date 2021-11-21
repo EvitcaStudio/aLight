@@ -262,12 +262,13 @@
 				let brightness = 0;
 				let offset = { 'x': 0, 'y': 0 };
 				let size = 1;
-				let cullDistance = -1;
-				let fadeDistance = 0;
+				let cullDistance = { 'x': -1, 'y': -1 };
+				let fadeDistance = { 'x': 0, 'y': 0 };
 				let ID;
 				let owner;
 
-				// id 
+				// id
+				// string or number
 				if (pSettings?.id) {
 					if (typeof(pSettings.id) === 'string' || typeof(pSettings.id) === 'number') {
 						ID = pSettings.id;
@@ -319,8 +320,12 @@
 					}
 				}
 				// offset
+				// num or object with `x` and `y` as numbers
 				if (pSettings?.offset) {
-					if (typeof(pSettings.offset) === 'object') {
+					if (typeof(pSettings.offset) === 'number') {
+						offset.x = pSettings.offset;
+						offset.y = pSettings.offset;
+					} else if (typeof(pSettings.offset) === 'object') {
 						if (typeof(pSettings?.offset.x) === 'number' && typeof(pSettings?.offset.y) === 'number') {
 							offset.x = pSettings.offset.x;
 							offset.y = pSettings.offset.y;
@@ -345,6 +350,7 @@
 				}
 
 				// color
+				// decimal
 				if (pSettings?.color) {
 					if (typeof(pSettings?.color) === 'number') {
 						color = VS.World.global.aUtils.grabColor(pSettings.color).decimal;
@@ -356,6 +362,7 @@
 				}
 
 				// brightness
+				// num
 				if (pSettings?.brightness) {
 					if (typeof(pSettings.brightness) === 'number') {
 						brightness = pSettings.brightness;
@@ -366,22 +373,43 @@
 					if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: No %cpSettings.brightness', 'font-weight: bold', 'property passed. Reverted to default');
 				}
 
+				// num or object with `x` and `y` as numbers
 				if (pSettings?.cullDistance) {
 					if (typeof(pSettings.cullDistance) === 'number') {
-						cullDistance = pSettings.cullDistance;
-					} else {
-						if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.cullDistance', 'font-weight: bold', 'property. Reverted to default');
-					}
-				}
-
-				if (pSettings?.fadeDistance) {
-					if (typeof(pSettings.fadeDistance) === 'number') {
-						fadeDistance = pSettings.fadeDistance;
-						if (fadeDistance > cullDistance) {
-							if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: %cpSettings.fadeDistance', 'font-weight: bold', 'is greater than pSettings.cullDistance. pSettings.fadeDistance will not work as expected.');
+						cullDistance.x = pSettings.cullDistance;
+						cullDistance.y = pSettings.cullDistance;
+					} else if (typeof(pSettings.cullDistance) === 'object') {
+						if (typeof(pSettings?.cullDistance.x) === 'number' && typeof(pSettings?.cullDistance.y) === 'number') {
+							cullDistance.x = pSettings.cullDistance.x;
+							cullDistance.y = pSettings.cullDistance.y;
+						} else {
+							console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.cullDistance.x || pSettings.cullDistance.y', 'font-weight: bold', 'property.');
+							return;
 						}
 					} else {
-						if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.fadeDistance', 'font-weight: bold', 'property. Reverted to default');
+						console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.cullDistance', 'font-weight: bold', 'property.');
+						return;			
+					}
+				}
+				// num or object with `x` and `y` as numbers
+				if (pSettings?.fadeDistance) {
+					if (typeof(pSettings.fadeDistance) === 'number') {
+						fadeDistance.x = pSettings.fadeDistance;
+						fadeDistance.y = pSettings.fadeDistance;
+					} else if (typeof(pSettings.fadeDistance) === 'object') {
+						if (typeof(pSettings?.fadeDistance.x) === 'number' && typeof(pSettings?.fadeDistance.y) === 'number') {
+							fadeDistance.x = pSettings.fadeDistance.x;
+							fadeDistance.y = pSettings.fadeDistance.y;
+							if (fadeDistance > cullDistance) {
+								if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: %cpSettings.fadeDistance', 'font-weight: bold', 'is greater than pSettings.cullDistance. pSettings.fadeDistance will not work as expected.');
+							}
+						} else {
+							console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.fadeDistance.x || pSettings.fadeDistance.y', 'font-weight: bold', 'property.');
+							return;
+						}
+					} else {
+						console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.fadeDistance', 'font-weight: bold', 'property.');
+						return;			
 					}
 				}
 
@@ -516,13 +544,22 @@
 				this.culledLights.push(pLight);
 				if (aLight.debugging) VS.Client.aMes('aLight [Active Lights]: ' + this.uniforms.uLightsCount + ' aLight [Culled Lights]: ' + this.culledLights.length);
 			},
-			cullFactor: function(pLight, pForceCull) {
-				let xCullDistance = Math.abs(this.centerScreenPos.x - pLight.xPos);
-				let yCullDistance = Math.abs(this.centerScreenPos.y - pLight.yPos);
-				let cullDistanceToUse = (xCullDistance > yCullDistance ? xCullDistance : yCullDistance);
-				let scale = VS.World.global.aUtils.normalize(cullDistanceToUse, pLight.cullDistance, pLight.fadeDistance);
-				pLight.brightness = VS.Math.clamp(scale * pLight.originalBrightness, -1, pLight.originalBrightness);
+			cullFactor: function(pLight, pForceCull, pDimensionChanged) {
+				let xDistance = Math.abs(this.centerScreenPos.x - pLight.xPos);
+				let yDistance = Math.abs(this.centerScreenPos.y - pLight.yPos);
+				let scale;
+				if (pDimensionChanged === 'x') {
+					scale = VS.World.global.aUtils.normalize(xDistance, pLight.cullDistance.x, pLight.fadeDistance.x);
+				} else if (pDimensionChanged === 'y') {
+					scale = VS.World.global.aUtils.normalize(yDistance, pLight.cullDistance.y, pLight.fadeDistance.y);
+				} else if (pDimensionChanged === 'xy') {
+					let dimensionToUse = (xDistance > yDistance ? 'xDistance' : 'yDistance');
+					let cullDistanceToUse = (dimensionToUse === 'xDistance' ? xDistance : yDistance);
+					scale = VS.World.global.aUtils.normalize(cullDistanceToUse, (dimensionToUse === 'xDistance' ? pLight.cullDistance.x : pLight.cullDistance.y), (dimensionToUse === 'xDistance' ? pLight.fadeDistance.x : pLight.fadeDistance.y));
+				}
+				if (pDimensionChanged) pLight.brightness = VS.Math.clamp(scale * pLight.originalBrightness, -1, pLight.originalBrightness);
 				if (VS.World.global.aUtils.round(pLight.brightness) <= 0 || pForceCull) {
+					pLight.brightness = -1;
 					this.cull(pLight);
 				}
 			},
@@ -624,32 +661,56 @@
 
 			let xScreenCenter = aLight.screenPos.x + (aLight.gameSize.width / 2);
 			let yScreenCenter = aLight.screenPos.y + (aLight.gameSize.height / 2);
-			let screenCenterChanged = false;
+			let screenCenterChanged;
 
 			// if the screen's center position has changed then we need to try and cull lights if possible, if it did not change from the last frame, no need to try and cull lights, since the last frame would have done it.
-			if (xScreenCenter !== aLight.centerScreenPos.x || yScreenCenter !== aLight.centerScreenPos.y) screenCenterChanged = true;
+			if (xScreenCenter !== aLight.centerScreenPos.x) { 
+				screenCenterChanged = 'x';
+			}
+			if (yScreenCenter !== aLight.centerScreenPos.y) {
+				if (screenCenterChanged) {
+					screenCenterChanged = 'xy';
+				} else {
+					screenCenterChanged = 'y';
+				}
+			}
 			aLight.centerScreenPos.x = xScreenCenter;
 			aLight.centerScreenPos.y = yScreenCenter;
 
 			for (let lightIndex = aLight.lights.length - 1; lightIndex >= 0; lightIndex--) {
 				let light = aLight.lights[lightIndex];
-				let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance;
+				if (light !== aLight.mouseLight) {
+					let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance.x || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance.y;
 
-				if (light.fadeDistance) {
-					if (inCullingRange) {
-						aLight.cullFactor(light, true);
-						continue;
-					} else {
-						if (screenCenterChanged) {
-							if (aLight.centerScreenPos.x >= (light.xPos + light.fadeDistance) || aLight.centerScreenPos.x >= Math.abs(light.xPos - light.fadeDistance) || aLight.centerScreenPos.y >= light.yPos + light.fadeDistance || aLight.centerScreenPos.y >= Math.abs(light.yPos - light.fadeDistance)) {
-								aLight.cullFactor(light);
+					if (light.fadeDistance.x || light.fadeDistance.y) {
+						if (inCullingRange) {
+							aLight.cullFactor(light, screenCenterChanged, true);
+							continue;
+						} else {
+							let centerScreenLeft = aLight.centerScreenPos.x <= light.xPos - light.fadeDistance.x;
+							let centerScreenRight = aLight.centerScreenPos.x >= light.xPos + light.fadeDistance.x;
+							let centerScreenDown = aLight.centerScreenPos.y >= light.yPos + light.fadeDistance.y;
+							let centerScreenUp = aLight.centerScreenPos.y <= light.yPos - light.fadeDistance.y;
+
+							if (screenCenterChanged === 'x') {
+								if (centerScreenRight || centerScreenLeft) {
+									aLight.cullFactor(light, false, screenCenterChanged);
+								}
+							} else if (screenCenterChanged === 'y') {
+								if (centerScreenDown || centerScreenUp) {
+									aLight.cullFactor(light, false, screenCenterChanged);
+								}
+							} else if (screenCenterChanged === 'xy') {
+								if (centerScreenRight || centerScreenLeft || centerScreenDown || centerScreenUp) {
+									aLight.cullFactor(light, false, screenCenterChanged);
+								}
 							}
 						}
-					}
-				} else {
-					if (inCullingRange && light.cullDistance !== -1) {
-						aLight.cull(light);
-						continue;
+					} else {
+						if (inCullingRange && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
+							aLight.cull(light);
+							continue;
+						}
 					}
 				}
 				aLight.addLightUniforms(light, true);
@@ -657,7 +718,7 @@
 
 			for (let lightIndex = aLight.culledLights.length - 1; lightIndex >= 0; lightIndex--) {
 				let light = aLight.culledLights[lightIndex];
-				let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance;
+				let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance.x || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance.y;
 				if (!inCullingRange) {
 					aLight.uncull(light, lightIndex);
 				}
