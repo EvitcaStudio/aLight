@@ -531,8 +531,8 @@
 				}
 			},
 			uncull: function(pLight, pIndex) {
-				this.addLightUniforms(pLight);
 				this.culledLights.splice(pIndex, 1);
+				this.addLightUniforms(pLight);
 				if (aLight.debugging) VS.Client.aMes('aLight [Active Lights]: ' + this.uniforms.uLightsCount + ' aLight [Culled Lights]: ' + this.culledLights.length);
 			},
 			cull: function(pLight) {
@@ -679,38 +679,41 @@
 
 			for (let lightIndex = aLight.lights.length - 1; lightIndex >= 0; lightIndex--) {
 				let light = aLight.lights[lightIndex];
-				if (light !== aLight.mouseLight) {
-					let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance.x || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance.y;
+				if (light === aLight.mouseLight) {
+					aLight.addLightUniforms(light, true);
+					continue;
+				}
 
-					if (light.fadeDistance.x || light.fadeDistance.y) {
-						if (inCullingRange) {
-							aLight.cullFactor(light, screenCenterChanged, true);
-							continue;
-						} else {
-							let centerScreenLeft = aLight.centerScreenPos.x <= light.xPos - light.fadeDistance.x;
-							let centerScreenRight = aLight.centerScreenPos.x >= light.xPos + light.fadeDistance.x;
-							let centerScreenDown = aLight.centerScreenPos.y >= light.yPos + light.fadeDistance.y;
-							let centerScreenUp = aLight.centerScreenPos.y <= light.yPos - light.fadeDistance.y;
+				let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance.x || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance.y;
 
-							if (screenCenterChanged === 'x') {
-								if (centerScreenRight || centerScreenLeft) {
-									aLight.cullFactor(light, false, screenCenterChanged);
-								}
-							} else if (screenCenterChanged === 'y') {
-								if (centerScreenDown || centerScreenUp) {
-									aLight.cullFactor(light, false, screenCenterChanged);
-								}
-							} else if (screenCenterChanged === 'xy') {
-								if (centerScreenRight || centerScreenLeft || centerScreenDown || centerScreenUp) {
-									aLight.cullFactor(light, false, screenCenterChanged);
-								}
+				if ((light.fadeDistance.x || light.fadeDistance.y) && screenCenterChanged) {
+					if (inCullingRange) {
+						aLight.cullFactor(light, true, screenCenterChanged);
+						continue;
+					} else {
+						let centerScreenLeft = aLight.centerScreenPos.x <= light.xPos - light.fadeDistance.x;
+						let centerScreenRight = aLight.centerScreenPos.x >= light.xPos + light.fadeDistance.x;
+						let centerScreenDown = aLight.centerScreenPos.y >= light.yPos + light.fadeDistance.y;
+						let centerScreenUp = aLight.centerScreenPos.y <= light.yPos - light.fadeDistance.y;
+
+						if (screenCenterChanged === 'x') {
+							if (centerScreenRight || centerScreenLeft) {
+								aLight.cullFactor(light, false, screenCenterChanged);
+							}
+						} else if (screenCenterChanged === 'y') {
+							if (centerScreenDown || centerScreenUp) {
+								aLight.cullFactor(light, false, screenCenterChanged);
+							}
+						} else if (screenCenterChanged === 'xy') {
+							if (centerScreenRight || centerScreenLeft || centerScreenDown || centerScreenUp) {
+								aLight.cullFactor(light, false, screenCenterChanged);
 							}
 						}
-					} else {
-						if (inCullingRange && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
-							aLight.cull(light);
-							continue;
-						}
+					}
+				} else {
+					if (inCullingRange && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
+						aLight.cull(light);
+						continue;
 					}
 				}
 				aLight.addLightUniforms(light, true);
