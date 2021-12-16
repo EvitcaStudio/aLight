@@ -237,7 +237,6 @@
 			destroyLight: function (pID) {
 				let light = this.getLightById(pID);
 				if (light) {
-					if (this.lights.includes(light)) this.lights.splice(this.lights.indexOf(light), 1);
 					if (this.reservedLightIDS.includes(pID)) this.reservedLightIDS.splice(this.reservedLightIDS.indexOf(pID), 1);
 					if (light.owner) {
 						if (light.owner.attachedLights.includes(light)) light.owner.attachedLights.splice(light.owner.attachedLights.indexOf(light), 1);
@@ -250,7 +249,7 @@
 				if (this.debugging) VS.Client.aMes('aLight [Active Lights]: ' + this.uniforms.uLightsCount + ' aLight [Culled Lights]: ' + this.culledLights.length);
 			},
 			createLight: function (pSettings) {
-				if ((this.lights.length + this.culledLights.length) >= MAX_LIGHTS) {
+				if (this.lights.length/*  + this.culledLights.length */ >= MAX_LIGHTS) {
 					if (this.debugging) console.error('aLight Module: %cMAX_LIGHTS', 'font-weight: bold', 'reached.');
 					return;
 				}
@@ -266,7 +265,6 @@
 				let fadeDistance = { 'x': 0, 'y': 0 };
 				let ID;
 				let owner;
-
 				// id
 				// string or number
 				if (pSettings?.id) {
@@ -456,9 +454,6 @@
 							if (pDiob.attachedLights) {
 								if (typeof(pDiob.attachedLights) === 'object' && pDiob.attachedLights.length !== undefined) {
 									let light = this.getLightById(pID);
-									if (light.owner) {
-										if (light.owner.attachedLights.includes(light)) light.owner.attachedLights.splice(light.owner.attachedLights.indexOf(light), 1);
-									}
 									if (light) {
 										// destroy light since we are detaching it
 										this.destroyLight(light.id);
