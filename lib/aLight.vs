@@ -7,7 +7,7 @@
 	let program;
 	let foundClient;
 
-	let engineWaitId = setInterval(() => {
+	const engineWaitId = setInterval(() => {
 		if (VS.Client && VS.Client.___EVITCA_aUtils && !foundClient && VS.World.global) {
 			foundClient = true;
 			buildLight();
@@ -21,7 +21,7 @@
 	});
 	
 	const aLightVertexShader = `#version 300 es
-		precision highp float;
+		precision mediump float;
 
 		in vec2 aVertexPosition;
 		out vec2 vTextureCoord;
@@ -46,7 +46,7 @@
 		`
 	
 	const aLightFragmentShader = `#version 300 es
-		precision highp float;
+		precision mediump float;
 		
 		#define MAX_LIGHTS 1012
 		#define LIGHT_INDEX_GAP 5
@@ -119,12 +119,14 @@
 		}
 		`
 
-	let buildLight = () => {
+	const buildLight = () => {
 		const MAX_LIGHTS = 204;
 		const MOUSE_ID = 999999999;
 		const LIGHT_INDEX_GAP = 5;
-		const gameSize = VS.World.getGameSize();
-
+		const MAX_ELAPSED_MS = VS.Client.maxFPS ? (1000 / VS.Client.maxFPS) * 2 : 33.34;
+		const TICK_FPS = VS.Client.maxFPS ? (1000 / VS.Client.maxFPS) : 16.67;
+		const TILE_SIZE = VS.World.getTileSize();
+		const GAME_SIZE = VS.World.getGameSize();
 		const aLight = {
 			// array full of lights
 			lights: [],
@@ -140,12 +142,51 @@
 			updateDelta: {},
 			// a object holding the window's size
 			windowSize: {},
-			// a object holdings the screen's current scale
-			gameSize: {},
 			// a object holding the screen's current position
 			screenPos: {},
 			// a object that will hold the position of the middle of the screen on the map, used to help cull lights when they are out of range
 			centerScreenPos: {},
+			// a object that stores the icon sizes of icons used in this library
+			cachedResourcesInfo: {},
+			// a object that stores the delta information
+			updateDelta: {
+				'lastTime': 0,
+				'deltaTime': 0,
+				'elapsedMS': 0
+			},
+			assignIconSize: function(pDiob) {
+				if (pDiob.aIconInfo) return;
+				const resourceID = (pDiob.atlasName + '_' + (pDiob.iconName ? pDiob.iconName : '') + '_' + (pDiob.iconState ? pDiob.iconState : '')).trim();
+				pDiob.aIconInfo = {};
+
+				if (this.cachedResourcesInfo[resourceID]) {
+					pDiob.aIconInfo = JSON.parse(JSON.stringify(this.cachedResourcesInfo[resourceID]));
+				} else {
+					pDiob.aIconInfo.width = Math.round(TILE_SIZE.width);
+					pDiob.aIconInfo.height = Math.round(TILE_SIZE.height);
+					pDiob.aIconInfo.halfWidth = Math.round(TILE_SIZE.width/2);
+					pDiob.aIconInfo.halfHeight = Math.round(TILE_SIZE.height/2);
+				}
+				
+				const setIconSize = function() {
+					const iconSize = VS.Icon.getIconSize(pDiob.atlasName, pDiob.iconName);
+					this.cachedResourcesInfo[resourceID] = {
+						'width': Math.round(iconSize.width),
+						'height': Math.round(iconSize.height),
+						'halfWidth': Math.round(iconSize.width / 2),
+						'halfHeight': Math.round(iconSize.height / 2)
+					};
+					pDiob.aIconInfo.width = this.cachedResourcesInfo[resourceID].width;
+					pDiob.aIconInfo.height = this.cachedResourcesInfo[resourceID].height;
+					pDiob.aIconInfo.halfWidth = this.cachedResourcesInfo[resourceID].halfWidth;
+					pDiob.aIconInfo.halfHeight = this.cachedResourcesInfo[resourceID].halfHeight;
+				}
+				if (pDiob.atlasName) {
+					VS.Resource.loadResource('icon', pDiob.atlasName, setIconSize.bind(this));
+				} else {
+					console.error('aLight Module [assignIconSize]: No %cpDiob.atlasName', 'font-weight: bold', 'to load.');
+				}
+			},
 			// uniforms that will be passed into the shader to help draw the lights
 			uniforms: {
 				'uAmbientColor': VS.World.global.aUtils.grabColor('#000000').decimal,
@@ -154,10 +195,84 @@
 				'uLightsCount': 0,
 				'uTime': 0,
 				'uScreenPos': { 'x': 0, 'y': 0 },
-				'uResolution': { 'x': gameSize.width, 'y': gameSize.height },
-				'uWindowSize': { 'x': gameSize.width, 'y': gameSize.height },
+				'uResolution': { 'x': GAME_SIZE.width, 'y': GAME_SIZE.height },
+				'uWindowSize': { 'x': GAME_SIZE.width, 'y': GAME_SIZE.height },
 				'uMapView': [1, 1, 0.5, 0.5], // scaleX, scaleY, anchor.x, anchor.y
 				'uMapPos': { 'x': 1, 'y': 1 }
+			},
+			// update loop that updates the lights and checks if a light needs to be culled
+			update: function(pElapsedMS, pDeltaTime) {
+				// the elapsed MS since the start time
+				this.uniforms.uTime = Date.now() - this.updateDelta.startTime;
+				this.updateShaderMisc();
+
+				const xScreenCenter = this.screenPos.x + (GAME_SIZE.width / 2);
+				const yScreenCenter = this.screenPos.y + (GAME_SIZE.height / 2);
+				let screenCenterChanged;
+
+				// if the screen's center position has changed then we need to try and cull lights if possible, if it did not change from the last frame, no need to try and cull lights, since the last frame would have done it.
+				if (xScreenCenter !== this.centerScreenPos.x) { 
+					screenCenterChanged = 'x';
+				}
+				if (yScreenCenter !== this.centerScreenPos.y) {
+					if (screenCenterChanged) {
+						screenCenterChanged = 'xy';
+					} else {
+						screenCenterChanged = 'y';
+					}
+				}
+				this.centerScreenPos.x = xScreenCenter;
+				this.centerScreenPos.y = yScreenCenter;
+
+				for (let lightIndex = this.lights.length - 1; lightIndex >= 0; lightIndex--) {
+					const light = this.lights[lightIndex];
+					if (light === this.mouseLight) {
+						this.addLightUniforms(light, true);
+						continue;
+					}
+
+					const inCullingRange = Math.abs(this.centerScreenPos.x - light.xPos) >= (light.cullDistance.x / VS.Client.mapView.scale.x) || Math.abs(this.centerScreenPos.y - light.yPos) >= (light.cullDistance.y / VS.Client.mapView.scale.x);
+
+					if ((light.fadeDistance.x || light.fadeDistance.y) && screenCenterChanged) {
+						if (inCullingRange) {
+							this.cullFactor(light, true, screenCenterChanged);
+							continue;
+						} else {
+							const centerScreenLeft = this.centerScreenPos.x <= light.xPos - (light.fadeDistance.x / VS.Client.mapView.scale.x);
+							const centerScreenRight = this.centerScreenPos.x >= light.xPos + (light.fadeDistance.x / VS.Client.mapView.scale.x);
+							const centerScreenDown = this.centerScreenPos.y >= light.yPos + (light.fadeDistance.y / VS.Client.mapView.scale.y);
+							const centerScreenUp = this.centerScreenPos.y <= light.yPos - (light.fadeDistance.y / VS.Client.mapView.scale.y);
+
+							if (screenCenterChanged === 'x') {
+								if (centerScreenRight || centerScreenLeft) {
+									this.cullFactor(light, false, screenCenterChanged);
+								}
+							} else if (screenCenterChanged === 'y') {
+								if (centerScreenDown || centerScreenUp) {
+									this.cullFactor(light, false, screenCenterChanged);
+								}
+							} else if (screenCenterChanged === 'xy') {
+								if (centerScreenRight || centerScreenLeft || centerScreenDown || centerScreenUp) {
+									this.cullFactor(light, false, screenCenterChanged);
+								}
+							}
+						}
+					} else {
+						if (inCullingRange && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
+							this.cull(light);
+							continue;
+						}
+					}
+					this.addLightUniforms(light, true);
+				}
+
+				for (let lightIndex = this.culledLights.length - 1; lightIndex >= 0; lightIndex--) {
+					const light = this.culledLights[lightIndex];
+					const inCullingRange = Math.abs(this.centerScreenPos.x - light.xPos) >= (light.cullDistance.x / VS.Client.mapView.scale.x) || Math.abs(this.centerScreenPos.y - light.yPos) >= (light.cullDistance.y / VS.Client.mapView.scale.y);
+					if (!inCullingRange) {
+						this.uncull(light, lightIndex);
+					}
+				}
 			},
 			// toggle the debug mode, which allows descriptive text to be shown when things of notice happen
 			toggleDebug: function () {
@@ -165,7 +280,7 @@
 			},
 			generateToken: function (pTokenLength = 7) {
 				let token = '';
-				let chars = '0123456789';
+				const chars = '0123456789';
 
 				for (let i = 0; i < pTokenLength; i++) {
 					token += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -174,7 +289,7 @@
 			},
 			getLightById: function (pID) {
 				if (pID) {
-					for (let el of this.lights) {
+					for (const el of this.lights) {
 						if (el.id === pID) {
 							return el;
 						}
@@ -187,7 +302,7 @@
 				}
 			},
 			updateShaderMisc: function() {
-				let mapView = VS.Client.mapView;
+				const mapView = VS.Client.mapView;
 				VS.Client.setMapView(VS.Client.mapView);
 		
 				// mapView
@@ -224,7 +339,7 @@
 						this.uniforms.uLightsCount++;
 						if (this.debugging) VS.Client.aMes('aLight [Active Lights]: ' + this.uniforms.uLightsCount + ' aLight [Culled Lights]: ' + this.culledLights.length);
 					}
-					let index = (this.lights.indexOf(pLight) * LIGHT_INDEX_GAP);
+					const index = (this.lights.indexOf(pLight) * LIGHT_INDEX_GAP);
 					this.uniforms.uLights[index + 0] = pLight.xPos;
 					this.uniforms.uLights[index + 1] = pLight.yPos;
 					this.uniforms.uLights[index + 2] = pLight.color;
@@ -235,7 +350,7 @@
 				}
 			},
 			destroyLight: function (pID) {
-				let light = this.getLightById(pID);
+				const light = this.getLightById(pID);
 				if (light) {
 					if (this.reservedLightIDS.includes(pID)) this.reservedLightIDS.splice(this.reservedLightIDS.indexOf(pID), 1);
 					if (light.owner) {
@@ -288,8 +403,14 @@
 								if (!pSettings.owner.attachedLights) {
 									pSettings.owner.attachedLights = [];
 								}
-								xPos = pSettings.owner.xPos + (pSettings.owner.xIconOffset ? pSettings.owner.xIconOffset : 0);
-								yPos = pSettings.owner.yPos + (pSettings.owner.yIconOffset ? pSettings.owner.yIconOffset : 0);
+								if (pSettings.center) {
+									this.assignIconSize(pSettings.owner);
+									xPos = pSettings.owner.getTrueCenterPos().x;
+									yPos = pSettings.owner.getTrueCenterPos().y;
+								} else {
+									xPos = pSettings.owner.xPos;
+									yPos = pSettings.owner.yPos;
+								}
 								owner = pSettings.owner;
 							} else {
 								console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %pSettings.owner.xPos || pSettings.owner.yPos', 'font-weight: bold', 'property.');
@@ -306,8 +427,8 @@
 				} else {
 					if ((pSettings?.xPos || pSettings?.xPos === 0) && (pSettings?.yPos || pSettings?.yPos === 0)) {
 						if (typeof(pSettings?.xPos) === 'number' && typeof(pSettings?.yPos) === 'number') {
-							xPos = pSettings.xPos;
-							yPos = pSettings.yPos;
+							xPos = pSettings.xPos + TILE_SIZE.width / 2;
+							yPos = pSettings.yPos + TILE_SIZE.height / 2;
 						} else {
 							console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.xPos || pSettings.yPos', 'font-weight: bold', 'property.');
 							return;
@@ -374,12 +495,12 @@
 				// num or object with `x` and `y` as numbers
 				if (pSettings?.cullDistance) {
 					if (typeof(pSettings.cullDistance) === 'number') {
-						cullDistance.x = pSettings.cullDistance;
-						cullDistance.y = pSettings.cullDistance;
+						cullDistance.x = pSettings.cullDistance / VS.Client.mapView.scale.x;
+						cullDistance.y = pSettings.cullDistance / VS.Client.mapView.scale.y;
 					} else if (typeof(pSettings.cullDistance) === 'object') {
 						if (typeof(pSettings?.cullDistance.x) === 'number' && typeof(pSettings?.cullDistance.y) === 'number') {
-							cullDistance.x = pSettings.cullDistance.x;
-							cullDistance.y = pSettings.cullDistance.y;
+							cullDistance.x = pSettings.cullDistance.x / VS.Client.mapView.scale.x;
+							cullDistance.y = pSettings.cullDistance.y / VS.Client.mapView.scale.y;
 						} else {
 							console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.cullDistance.x || pSettings.cullDistance.y', 'font-weight: bold', 'property.');
 							return;
@@ -392,13 +513,16 @@
 				// num or object with `x` and `y` as numbers
 				if (pSettings?.fadeDistance) {
 					if (typeof(pSettings.fadeDistance) === 'number') {
-						fadeDistance.x = pSettings.fadeDistance;
-						fadeDistance.y = pSettings.fadeDistance;
+						fadeDistance.x = pSettings.fadeDistance / VS.Client.mapView.scale.x;
+						fadeDistance.y = pSettings.fadeDistance / VS.Client.mapView.scale.y;
+						if (fadeDistance.x > cullDistance.x || fadeDistance.y > cullDistance.y) {
+							if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: %cpSettings.fadeDistance', 'font-weight: bold', 'is greater than pSettings.cullDistance. pSettings.fadeDistance will not work as expected.');
+						}
 					} else if (typeof(pSettings.fadeDistance) === 'object') {
 						if (typeof(pSettings?.fadeDistance.x) === 'number' && typeof(pSettings?.fadeDistance.y) === 'number') {
-							fadeDistance.x = pSettings.fadeDistance.x;
-							fadeDistance.y = pSettings.fadeDistance.y;
-							if (fadeDistance > cullDistance) {
+							fadeDistance.x = pSettings.fadeDistance.x / VS.Client.mapView.scale.x;
+							fadeDistance.y = pSettings.fadeDistance.y / VS.Client.mapView.scale.y;
+							if (fadeDistance.x > cullDistance.x || fadeDistance.y > cullDistance.y) {
 								if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: %cpSettings.fadeDistance', 'font-weight: bold', 'is greater than pSettings.cullDistance. pSettings.fadeDistance will not work as expected.');
 							}
 						} else {
@@ -414,19 +538,18 @@
 				this.reservedLightIDS.push(ID);
 				
 				// light
-				let light = {};
+				const light = {};
+				light.owner = owner;
 				light.id = ID;
 				light.offset = offset;
-				light.xPos = xPos + (light.owner ? light.owner.xIconOffset : 0) + light.offset.x;
-				light.yPos = yPos + (light.owner ? light.owner.yIconOffset : 0) + light.offset.y;
+				light.xPos = xPos + light.offset.x;
+				light.yPos = yPos + light.offset.y;
 				light.color = color;
 				light.originalBrightness = brightness;
 				light.brightness = brightness;
 				light.size = size;
 				light.cullDistance = cullDistance;
 				light.fadeDistance = fadeDistance;
-				light.owner = owner;
-
 				this.addLightUniforms(light);
 
 				if (owner) {
@@ -435,9 +558,9 @@
 						owner._onRelocated = owner.onRelocated;
 						owner.onRelocatedSet = true;
 						owner.onRelocated = function(pX, pY, pMap, pMove) {
-							for (let attachedLight of this.attachedLights) {
-								attachedLight.xPos = (this.xPos + this.xIconOffset) + attachedLight.offset.x;
-								attachedLight.yPos = (this.yPos + this.yIconOffset) + attachedLight.offset.y;
+							for (const attachedLight of this.attachedLights) {
+								attachedLight.xPos = this.getTrueCenterPos().x + attachedLight.offset.x;
+								attachedLight.yPos = this.getTrueCenterPos().y + attachedLight.offset.y;
 							}
 							if (this._onRelocated) {
 								this._onRelocated.apply(this, arguments);
@@ -452,8 +575,8 @@
 					if (typeof(pDiob) === 'object') {
 						if (pID) {
 							if (pDiob.attachedLights) {
-								if (typeof(pDiob.attachedLights) === 'object' && pDiob.attachedLights.length !== undefined) {
-									let light = this.getLightById(pID);
+								if (pDiob.attachedLights?.constructor === Array) {
+									const light = this.getLightById(pID);
 									if (light) {
 										// destroy light since we are detaching it
 										this.destroyLight(light.id);
@@ -494,7 +617,7 @@
 				if (!this.mouseLight) {
 					if (pSettings) {
 						if (typeof(pSettings) === 'object') {
-							let mousePos = VS.Client.getMousePos();
+							const mousePos = VS.Client.getMousePos();
 							this.mapPosTracker = {};
 							VS.Client.getPosFromScreen(mousePos.x, mousePos.y, this.mapPosTracker);
 							pSettings.xPos = this.mapPosTracker.x;
@@ -508,7 +631,7 @@
 
 					} else {
 						if (this.debugging) console.warn('aLight Module: No %cpSettings', 'font-weight: bold', 'parameter passed. Reverted to default');
-						let mousePos = VS.Client.getMousePos();
+						const mousePos = VS.Client.getMousePos();
 						this.mapPosTracker = {};
 						VS.Client.getPosFromScreen(mousePos.x, mousePos.y, this.mapPosTracker);
 						this.mouseLight = this.createLight({
@@ -540,17 +663,17 @@
 				if (aLight.debugging) VS.Client.aMes('aLight [Active Lights]: ' + this.uniforms.uLightsCount + ' aLight [Culled Lights]: ' + this.culledLights.length);
 			},
 			cullFactor: function(pLight, pForceCull, pDimensionChanged) {
-				let xDistance = Math.abs(this.centerScreenPos.x - pLight.xPos);
-				let yDistance = Math.abs(this.centerScreenPos.y - pLight.yPos);
+				const xDistance = Math.abs(this.centerScreenPos.x - pLight.xPos);
+				const yDistance = Math.abs(this.centerScreenPos.y - pLight.yPos);
 				let scale;
 				if (pDimensionChanged === 'x') {
-					scale = VS.World.global.aUtils.normalize(xDistance, pLight.cullDistance.x, pLight.fadeDistance.x);
+					scale = VS.World.global.aUtils.normalize(xDistance, (pLight.cullDistance.x / VS.Client.mapView.scale.x), (pLight.fadeDistance.x / VS.Client.mapView.scale.x));
 				} else if (pDimensionChanged === 'y') {
-					scale = VS.World.global.aUtils.normalize(yDistance, pLight.cullDistance.y, pLight.fadeDistance.y);
+					scale = VS.World.global.aUtils.normalize(yDistance, (pLight.cullDistance.y / VS.Client.mapView.scale.y), (pLight.fadeDistance.y / VS.Client.mapView.scale.y));
 				} else if (pDimensionChanged === 'xy') {
-					let dimensionToUse = (xDistance > yDistance ? 'xDistance' : 'yDistance');
-					let cullDistanceToUse = (dimensionToUse === 'xDistance' ? xDistance : yDistance);
-					scale = VS.World.global.aUtils.normalize(cullDistanceToUse, (dimensionToUse === 'xDistance' ? pLight.cullDistance.x : pLight.cullDistance.y), (dimensionToUse === 'xDistance' ? pLight.fadeDistance.x : pLight.fadeDistance.y));
+					const dimensionToUse = (xDistance > yDistance ? 'xDistance' : 'yDistance');
+					const cullDistanceToUse = (dimensionToUse === 'xDistance' ? xDistance : yDistance);
+					scale = VS.World.global.aUtils.normalize(cullDistanceToUse, (dimensionToUse === 'xDistance' ? (pLight.cullDistance.x / VS.Client.mapView.scale.x) : (pLight.cullDistance.y / VS.Client.mapView.scale.y)), (dimensionToUse === 'xDistance' ? (pLight.fadeDistance.x / VS.Client.mapView.scale.x) : (pLight.fadeDistance.y / VS.Client.mapView.scale.y)));
 				}
 				if (pDimensionChanged) pLight.brightness = VS.Math.clamp(scale * pLight.originalBrightness, -1, pLight.originalBrightness);
 				if (VS.World.global.aUtils.round(pLight.brightness) <= 0 || pForceCull) {
@@ -592,12 +715,61 @@
 
 		VS.Client.getScreenPos(aLight.screenPos);
 		VS.Client.getWindowSize(aLight.windowSize);
-		aLight.gameSize = VS.World.getGameSize();
+
+		if (typeof(VS.Client.mapView.scale) !== 'object') {
+			VS.Client.mapView.scale = { 'x': VS.Client.mapView.scale, 'y': VS.Client.mapView.scale };
+		}
+
+		VS.Client.mapView.anchor = { 'x': 0.5, 'y': 0.5 };
+		VS.Client.setMapView(VS.Client.mapView);
+
+		if (VS.Client.timeScale === undefined) {
+			VS.Client.timeScale = 1;
+		}
+
+		const prototypeDiob = VS.newDiob();
+		if (!prototypeDiob.constructor.prototype.aCenterPos && !prototypeDiob.constructor.prototype.getTrueCenterPos) {
+			prototypeDiob.constructor.prototype.aCenterPos = { 'x': 0, 'y': 0 };
+			prototypeDiob.constructor.prototype.getTrueCenterPos = function() {
+				this.aCenterPos.x = Math.round(this.xPos + (this.aIconInfo.halfWidth) + this.xIconOffset);
+				this.aCenterPos.y = Math.round(this.yPos + (this.aIconInfo.halfHeight) + this.yIconOffset);
+				return this.aCenterPos;
+			};
+		}
+
+		if (!aLight.onScreenRenderSet) {
+			aLight._onScreenRender = VS.Client.onScreenRender;
+			aLight.onScreenRenderSet = true;
+			VS.Client.onScreenRender = function(pT) {
+				if (this.___EVITCA_aPause) {
+					if (this.aPause.paused) {
+						this.aLight.updateDelta.lastTime = pT;
+						return;
+					}
+				}
+				if (this.aLight.updateDelta.startTime === undefined) this.aLight.updateDelta.startTime = Date.now();
+				if (pT > this.aLight.updateDelta.lastTime) {
+					this.aLight.updateDelta.elapsedMS = pT - this.aLight.updateDelta.lastTime;
+					if (this.aLight.updateDelta.elapsedMS > MAX_ELAPSED_MS) {
+						// check here, if warnings are showing up about setInterval taking too long
+						this.aLight.updateDelta.elapsedMS = MAX_ELAPSED_MS;
+					}
+					this.aLight.updateDelta.deltaTime = (this.aLight.updateDelta.elapsedMS / TICK_FPS) * this.timeScale;
+					this.aLight.updateDelta.elapsedMS *= this.timeScale;
+				}
+
+				this.aLight.update(this.aLight.updateDelta.elapsedMS, this.aLight.updateDelta.deltaTime);
+				this.aLight.updateDelta.lastTime = pT;			
+				if (this.aLight._onScreenRender) {
+					this.aLight._onScreenRender.apply(this, arguments);
+				}
+			}
+		}
 
 		// append code into the client's onMouseMove to update the mouse light if there is one
-		if (!VS.Client.onMouseMoveSet) {
-			VS.Client._onMouseMove = VS.Client.onMouseMove;
-			VS.Client.onMouseMoveSet = true;
+		if (!aLight.onMouseMoveSet) {
+			aLight._onMouseMove = VS.Client.onMouseMove;
+			aLight.onMouseMoveSet = true;
 			VS.Client.onMouseMove = function(pDiob, pX, pY) {
 				if (aLight) {
 					if (aLight.mouseLight) {
@@ -607,16 +779,16 @@
 						aLight.addLightUniforms(aLight.mouseLight, true);
 					}
 				}
-				if (this._onMouseMove) {
-					this._onMouseMove.apply(this, arguments);
+				if (this.aLight._onMouseMove) {
+					this.aLight._onMouseMove.apply(this, arguments);
 				}
 			}
 		}
 
 		// append code into the client's onWindowResize to update the library's window size object
-		if (!VS.Client.onWindowResizeSet) {
-			VS.Client._onWindowResize = VS.Client.onWindowResize;
-			VS.Client.onWindowResizeSet = true;
+		if (!aLight.onWindowResizeSet) {
+			aLight._onWindowResize = VS.Client.onWindowResize;
+			aLight.onWindowResizeSet = true;
 			VS.Client.onWindowResize = function(pWidth, pHeight) {
 				if (aLight) {
 					aLight.windowSize.width = pWidth;
@@ -624,16 +796,16 @@
 					aLight.uniforms.uWindowSize.x = pWidth;
 					aLight.uniforms.uWindowSize.y = pHeight;
 				}
-				if (this._onWindowResize) {
-					this._onWindowResize.apply(this, arguments);
+				if (this.aLight._onWindowResize) {
+					this.aLight._onWindowResize.apply(this, arguments);
 				}
 			}
 		}
 
 		// append code into the client's onScreenMoved to update the library's screen position object
-		if (!VS.Client.onScreenMovedSet) {
-			VS.Client._onScreenMoved = VS.Client.onScreenMoved;
-			VS.Client.onScreenMovedSet = true;
+		if (!aLight.onScreenMovedSet) {
+			aLight._onScreenMoved = VS.Client.onScreenMoved;
+			aLight.onScreenMovedSet = true;
 			VS.Client.onScreenMoved = function(pX, pY, pOldX, pOldY) {
 				if (aLight) {
 					aLight.screenPos.x = pX;
@@ -641,92 +813,13 @@
 					aLight.uniforms.uScreenPos.x = pX;
 					aLight.uniforms.uScreenPos.y = pY;
 				}
-				if (this._onScreenMoved) {
-					this._onScreenMoved.apply(this, arguments);
+				if (this.aLight._onScreenMoved) {
+					this.aLight._onScreenMoved.apply(this, arguments);
 				}
 			}
-		}
-
-		// update loop that updates the lights and checks if a light needs to be culled
-		let update = (pTimeStamp) => {
-			if (aLight.updateDelta.startTime === undefined) aLight.updateDelta.startTime = pTimeStamp;
-			// the elapsed MS since the start time
-			aLight.uniforms.uTime = pTimeStamp - aLight.updateDelta.startTime;
-			aLight.updateShaderMisc();
-
-			let xScreenCenter = aLight.screenPos.x + (aLight.gameSize.width / 2);
-			let yScreenCenter = aLight.screenPos.y + (aLight.gameSize.height / 2);
-			let screenCenterChanged;
-
-			// if the screen's center position has changed then we need to try and cull lights if possible, if it did not change from the last frame, no need to try and cull lights, since the last frame would have done it.
-			if (xScreenCenter !== aLight.centerScreenPos.x) { 
-				screenCenterChanged = 'x';
-			}
-			if (yScreenCenter !== aLight.centerScreenPos.y) {
-				if (screenCenterChanged) {
-					screenCenterChanged = 'xy';
-				} else {
-					screenCenterChanged = 'y';
-				}
-			}
-			aLight.centerScreenPos.x = xScreenCenter;
-			aLight.centerScreenPos.y = yScreenCenter;
-
-			for (let lightIndex = aLight.lights.length - 1; lightIndex >= 0; lightIndex--) {
-				let light = aLight.lights[lightIndex];
-				if (light === aLight.mouseLight) {
-					aLight.addLightUniforms(light, true);
-					continue;
-				}
-
-				let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance.x || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance.y;
-
-				if ((light.fadeDistance.x || light.fadeDistance.y) && screenCenterChanged) {
-					if (inCullingRange) {
-						aLight.cullFactor(light, true, screenCenterChanged);
-						continue;
-					} else {
-						let centerScreenLeft = aLight.centerScreenPos.x <= light.xPos - light.fadeDistance.x;
-						let centerScreenRight = aLight.centerScreenPos.x >= light.xPos + light.fadeDistance.x;
-						let centerScreenDown = aLight.centerScreenPos.y >= light.yPos + light.fadeDistance.y;
-						let centerScreenUp = aLight.centerScreenPos.y <= light.yPos - light.fadeDistance.y;
-
-						if (screenCenterChanged === 'x') {
-							if (centerScreenRight || centerScreenLeft) {
-								aLight.cullFactor(light, false, screenCenterChanged);
-							}
-						} else if (screenCenterChanged === 'y') {
-							if (centerScreenDown || centerScreenUp) {
-								aLight.cullFactor(light, false, screenCenterChanged);
-							}
-						} else if (screenCenterChanged === 'xy') {
-							if (centerScreenRight || centerScreenLeft || centerScreenDown || centerScreenUp) {
-								aLight.cullFactor(light, false, screenCenterChanged);
-							}
-						}
-					}
-				} else {
-					if (inCullingRange && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
-						aLight.cull(light);
-						continue;
-					}
-				}
-				aLight.addLightUniforms(light, true);
-			}
-
-			for (let lightIndex = aLight.culledLights.length - 1; lightIndex >= 0; lightIndex--) {
-				let light = aLight.culledLights[lightIndex];
-				let inCullingRange = Math.abs(aLight.centerScreenPos.x - light.xPos) >= light.cullDistance.x || Math.abs(aLight.centerScreenPos.y - light.yPos) >= light.cullDistance.y;
-				if (!inCullingRange) {
-					aLight.uncull(light, lightIndex);
-				}
-			}
-
-			rafLight = requestAnimationFrame(update);
 		}
 
 		VS.Client.addFilter('LightShader', 'custom', { 'filter': new PIXI.Filter(aLightVertexShader, aLightFragmentShader, aLight.uniforms) });
-		let rafLight = requestAnimationFrame(update);
 	}
 }
 )();
