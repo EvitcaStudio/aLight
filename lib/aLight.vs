@@ -154,18 +154,22 @@
 				'deltaTime': 0,
 				'elapsedMS': 0
 			},
-			assignIconSize: function(pDiob) {
-				if (pDiob.aIconInfo) return;
+			assignIconSize: function(pDiob, pAnchor) {
+				const infoWasPreset = pDiob.aIconInfo ? true : false;
 				const resourceID = (pDiob.atlasName + '_' + (pDiob.iconName ? pDiob.iconName : '') + '_' + (pDiob.iconState ? pDiob.iconState : '')).trim();
 				pDiob.aIconInfo = {};
 
 				if (this.cachedResourcesInfo[resourceID]) {
+					if (pAnchor) pDiob.anchor = { 'x': this.cachedResourcesInfo[resourceID].width / this.cachedResourcesInfo[resourceID].width, 'y': this.cachedResourcesInfo[resourceID].halfHeight / this.cachedResourcesInfo[resourceID].height };
 					pDiob.aIconInfo = JSON.parse(JSON.stringify(this.cachedResourcesInfo[resourceID]));
+					// only needed to get the updated anchor information and icon information from an icon change.
+					if (infoWasPreset) return;
 				} else {
 					pDiob.aIconInfo.width = Math.round(TILE_SIZE.width);
 					pDiob.aIconInfo.height = Math.round(TILE_SIZE.height);
 					pDiob.aIconInfo.halfWidth = Math.round(TILE_SIZE.width/2);
 					pDiob.aIconInfo.halfHeight = Math.round(TILE_SIZE.height/2);
+					if (pAnchor) pDiob.anchor = { 'x': pDiob.aIconInfo.width / pDiob.aIconInfo.width, 'y': pDiob.aIconInfo.halfHeight / pDiob.aIconInfo.height };
 				}
 				
 				const setIconSize = function() {
@@ -180,6 +184,7 @@
 					pDiob.aIconInfo.height = this.cachedResourcesInfo[resourceID].height;
 					pDiob.aIconInfo.halfWidth = this.cachedResourcesInfo[resourceID].halfWidth;
 					pDiob.aIconInfo.halfHeight = this.cachedResourcesInfo[resourceID].halfHeight;
+					if (pAnchor) pDiob.anchor = { 'x': this.cachedResourcesInfo[resourceID].width / this.cachedResourcesInfo[resourceID].width, 'y': this.cachedResourcesInfo[resourceID].halfHeight / this.cachedResourcesInfo[resourceID].height };
 				}
 				if (pDiob.atlasName) {
 					VS.Resource.loadResource('icon', pDiob.atlasName, setIconSize.bind(this));
@@ -375,10 +380,12 @@
 				let brightness = 0;
 				let offset = { 'x': 0, 'y': 0 };
 				let size = 1;
+				// a value of -1 for the x and y means it will not be apart of the culling system
 				let cullDistance = { 'x': -1, 'y': -1 };
 				let fadeDistance = { 'x': 0, 'y': 0 };
 				let ID;
 				let owner;
+				console.log(pSettings)
 				// id
 				// string or number
 				if (pSettings?.id) {
@@ -553,16 +560,16 @@
 
 				if (owner) {
 					owner.attachedLights.push(light);
-					if (!owner.onRelocatedSet) {
-						owner._onRelocated = owner.onRelocated;
-						owner.onRelocatedSet = true;
+					if (!owner.aLightOnRelocatedSet) {
+						owner._aLightOnRelocated = owner.onRelocated;
+						owner.aLightOnRelocatedSet = true;
 						owner.onRelocated = function(pX, pY, pMap, pMove) {
 							for (const attachedLight of this.attachedLights) {
 								attachedLight.xPos = this.getTrueCenterPos().x + attachedLight.offset.x;
 								attachedLight.yPos = this.getTrueCenterPos().y + attachedLight.offset.y;
 							}
-							if (this._onRelocated) {
-								this._onRelocated.apply(this, arguments);
+							if (this._aLightOnRelocated) {
+								this._aLightOnRelocated.apply(this, arguments);
 							}
 						}
 					}
