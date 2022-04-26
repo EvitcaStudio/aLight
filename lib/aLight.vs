@@ -385,7 +385,6 @@
 				let fadeDistance = { 'x': 0, 'y': 0 };
 				let ID;
 				let owner;
-				console.log(pSettings)
 				// id
 				// string or number
 				if (pSettings?.id) {
