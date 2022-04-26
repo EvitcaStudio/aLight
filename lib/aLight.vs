@@ -294,7 +294,6 @@
 							return el;
 						}
 					}
-					console.error('aLight Module [Light ID: \'' + pID + '\']: No %clight', 'font-weight: bold', 'found with that id');
 					return;
 				} else {
 					console.error('aLight Module: No %cid', 'font-weight: bold', 'passed');
