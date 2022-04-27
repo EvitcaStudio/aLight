@@ -160,7 +160,7 @@
 				pDiob.aIconInfo = {};
 
 				if (this.cachedResourcesInfo[resourceID]) {
-					if (pAnchor) pDiob.anchor = { 'x': this.cachedResourcesInfo[resourceID].width / this.cachedResourcesInfo[resourceID].width, 'y': this.cachedResourcesInfo[resourceID].halfHeight / this.cachedResourcesInfo[resourceID].height };
+					if (pAnchor) pDiob.anchor = { 'x': this.cachedResourcesInfo[resourceID].halfWidth / this.cachedResourcesInfo[resourceID].width, 'y': this.cachedResourcesInfo[resourceID].halfHeight / this.cachedResourcesInfo[resourceID].height };
 					pDiob.aIconInfo = JSON.parse(JSON.stringify(this.cachedResourcesInfo[resourceID]));
 					// only needed to get the updated anchor information and icon information from an icon change.
 					if (infoWasPreset) return;
@@ -169,7 +169,7 @@
 					pDiob.aIconInfo.height = Math.round(TILE_SIZE.height);
 					pDiob.aIconInfo.halfWidth = Math.round(TILE_SIZE.width/2);
 					pDiob.aIconInfo.halfHeight = Math.round(TILE_SIZE.height/2);
-					if (pAnchor) pDiob.anchor = { 'x': pDiob.aIconInfo.width / pDiob.aIconInfo.width, 'y': pDiob.aIconInfo.halfHeight / pDiob.aIconInfo.height };
+					if (pAnchor) pDiob.anchor = { 'x': pDiob.aIconInfo.halfWidth / pDiob.aIconInfo.width, 'y': pDiob.aIconInfo.halfHeight / pDiob.aIconInfo.height };
 				}
 				
 				const setIconSize = function() {
@@ -184,7 +184,7 @@
 					pDiob.aIconInfo.height = this.cachedResourcesInfo[resourceID].height;
 					pDiob.aIconInfo.halfWidth = this.cachedResourcesInfo[resourceID].halfWidth;
 					pDiob.aIconInfo.halfHeight = this.cachedResourcesInfo[resourceID].halfHeight;
-					if (pAnchor) pDiob.anchor = { 'x': this.cachedResourcesInfo[resourceID].width / this.cachedResourcesInfo[resourceID].width, 'y': this.cachedResourcesInfo[resourceID].halfHeight / this.cachedResourcesInfo[resourceID].height };
+					if (pAnchor) pDiob.anchor = { 'x': this.cachedResourcesInfo[resourceID].halfWidth / this.cachedResourcesInfo[resourceID].width, 'y': this.cachedResourcesInfo[resourceID].halfHeight / this.cachedResourcesInfo[resourceID].height };
 				}
 				if (pDiob.atlasName) {
 					VS.Resource.loadResource('icon', pDiob.atlasName, setIconSize.bind(this));
@@ -238,7 +238,7 @@
 
 					const inCullingRange = Math.abs(this.centerScreenPos.x - light.xPos) >= (light.cullDistance.x / VS.Client.mapView.scale.x) || Math.abs(this.centerScreenPos.y - light.yPos) >= (light.cullDistance.y / VS.Client.mapView.scale.x);
 
-					if ((light.fadeDistance.x || light.fadeDistance.y) && screenCenterChanged) {
+					if ((light.fadeDistance.x || light.fadeDistance.y) && screenCenterChanged && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
 						if (inCullingRange) {
 							this.cullFactor(light, true, screenCenterChanged);
 							continue;
