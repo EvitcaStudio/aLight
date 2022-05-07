@@ -21,7 +21,7 @@
 	});
 	
 	const aLightVertexShader = `#version 300 es
-		precision mediump float;
+		precision lowp float;
 
 		in vec2 aVertexPosition;
 		out vec2 vTextureCoord;
@@ -46,7 +46,7 @@
 		`
 	
 	const aLightFragmentShader = `#version 300 es
-		precision mediump float;
+		precision lowp float;
 		
 		#define MAX_LIGHTS 1012
 		#define LIGHT_INDEX_GAP 5
@@ -387,7 +387,7 @@
 				let owner;
 				// id
 				// string or number
-				if (pSettings?.id) {
+				if (pSettings.id) {
 					if (typeof(pSettings.id) === 'string' || typeof(pSettings.id) === 'number') {
 						ID = pSettings.id;
 						if (this.reservedLightIDS.includes(ID)) {
@@ -401,7 +401,7 @@
 				}
 
 				// position
-				if (pSettings?.owner) {
+				if (pSettings.owner) {
 					if (typeof(pSettings.owner) === 'object') {
 						if ((pSettings.owner.xPos || pSettings.owner.xPos === 0) && (pSettings.owner.yPos || pSettings.owner.yPos === 0)) {
 							if (typeof(pSettings.owner.xPos) === 'number' && typeof(pSettings.owner.yPos) === 'number') {
@@ -430,8 +430,8 @@
 						return;
 					}
 				} else {
-					if ((pSettings?.xPos || pSettings?.xPos === 0) && (pSettings?.yPos || pSettings?.yPos === 0)) {
-						if (typeof(pSettings?.xPos) === 'number' && typeof(pSettings?.yPos) === 'number') {
+					if ((pSettings.xPos || pSettings.xPos === 0) && (pSettings.yPos || pSettings.yPos === 0)) {
+						if (typeof(pSettings.xPos) === 'number' && typeof(pSettings.yPos) === 'number') {
 							xPos = pSettings.xPos + TILE_SIZE.width / 2;
 							yPos = pSettings.yPos + TILE_SIZE.height / 2;
 						} else {
@@ -445,12 +445,12 @@
 				}
 				// offset
 				// num or object with `x` and `y` as numbers
-				if (pSettings?.offset) {
+				if (pSettings.offset) {
 					if (typeof(pSettings.offset) === 'number') {
 						offset.x = pSettings.offset;
 						offset.y = pSettings.offset;
 					} else if (typeof(pSettings.offset) === 'object') {
-						if (typeof(pSettings?.offset.x) === 'number' && typeof(pSettings?.offset.y) === 'number') {
+						if (typeof(pSettings.offset.x) === 'number' && typeof(pSettings.offset.y) === 'number') {
 							offset.x = pSettings.offset.x;
 							offset.y = pSettings.offset.y;
 						} else {
@@ -465,7 +465,7 @@
 					if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: No %cpSettings.offset.x || pSettings.offset.y', 'font-weight: bold', 'property passed. Reverted to default');
 				}
 
-				if (pSettings?.size) {
+				if (pSettings.size) {
 					if (typeof(pSettings.size) === 'number') {
 						size = pSettings.size;
 					} else {
@@ -475,8 +475,8 @@
 
 				// color
 				// decimal
-				if (pSettings?.color) {
-					if (typeof(pSettings?.color) === 'number') {
+				if (pSettings.color) {
+					if (typeof(pSettings.color) === 'number') {
 						color = VS.World.global.aUtils.grabColor(pSettings.color).decimal;
 					} else {
 						if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.color', 'font-weight: bold', 'property. Reverted to default');
@@ -487,7 +487,7 @@
 
 				// brightness
 				// num
-				if (pSettings?.brightness) {
+				if (pSettings.brightness) {
 					if (typeof(pSettings.brightness) === 'number') {
 						brightness = pSettings.brightness;
 					} else {
@@ -498,12 +498,12 @@
 				}
 
 				// num or object with `x` and `y` as numbers
-				if (pSettings?.cullDistance) {
+				if (pSettings.cullDistance) {
 					if (typeof(pSettings.cullDistance) === 'number') {
 						cullDistance.x = pSettings.cullDistance / VS.Client.mapView.scale.x;
 						cullDistance.y = pSettings.cullDistance / VS.Client.mapView.scale.y;
 					} else if (typeof(pSettings.cullDistance) === 'object') {
-						if (typeof(pSettings?.cullDistance.x) === 'number' && typeof(pSettings?.cullDistance.y) === 'number') {
+						if (typeof(pSettings.cullDistance.x) === 'number' && typeof(pSettings.cullDistance.y) === 'number') {
 							cullDistance.x = pSettings.cullDistance.x / VS.Client.mapView.scale.x;
 							cullDistance.y = pSettings.cullDistance.y / VS.Client.mapView.scale.y;
 						} else {
@@ -516,7 +516,7 @@
 					}
 				}
 				// num or object with `x` and `y` as numbers
-				if (pSettings?.fadeDistance) {
+				if (pSettings.fadeDistance) {
 					if (typeof(pSettings.fadeDistance) === 'number') {
 						fadeDistance.x = pSettings.fadeDistance / VS.Client.mapView.scale.x;
 						fadeDistance.y = pSettings.fadeDistance / VS.Client.mapView.scale.y;
@@ -524,7 +524,7 @@
 							if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: %cpSettings.fadeDistance', 'font-weight: bold', 'is greater than pSettings.cullDistance. pSettings.fadeDistance will not work as expected.');
 						}
 					} else if (typeof(pSettings.fadeDistance) === 'object') {
-						if (typeof(pSettings?.fadeDistance.x) === 'number' && typeof(pSettings?.fadeDistance.y) === 'number') {
+						if (typeof(pSettings.fadeDistance.x) === 'number' && typeof(pSettings.fadeDistance.y) === 'number') {
 							fadeDistance.x = pSettings.fadeDistance.x / VS.Client.mapView.scale.x;
 							fadeDistance.y = pSettings.fadeDistance.y / VS.Client.mapView.scale.y;
 							if (fadeDistance.x > cullDistance.x || fadeDistance.y > cullDistance.y) {
@@ -580,7 +580,7 @@
 					if (typeof(pDiob) === 'object') {
 						if (pID) {
 							if (pDiob.attachedLights) {
-								if (pDiob.attachedLights?.constructor === Array) {
+								if (pDiob.attachedLights.constructor === Array) {
 									const light = this.getLightById(pID);
 									if (light) {
 										// destroy light since we are detaching it
@@ -639,6 +639,10 @@
 						const mousePos = VS.Client.getMousePos();
 						this.mapPosTracker = {};
 						VS.Client.getPosFromScreen(mousePos.x, mousePos.y, this.mapPosTracker);
+						if (Number.isNaN(this.mapPosTracker.x) || Number.isNaN(this.mapPosTracker.y)) {
+							this.mapPosTracker.x = 0;
+							this.mapPosTracker.y = 0;
+						}
 						this.mouseLight = this.createLight({
 							'xPos': this.mapPosTracker.x,
 							'yPos': this.mapPosTracker.y,
