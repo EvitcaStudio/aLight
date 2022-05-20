@@ -4,7 +4,7 @@
 	let foundClient;
 	// Client Library
 	const engineWaitId = setInterval(() => {
-		if (VS.Client && VS.Client.___EVITCA_aUtils && !foundClient && VS.World.global) {
+		if (VS.Client && VS.Client.___EVITCA_aUtils && !foundClient) {
 			foundClient = true;
 			buildLight();
 			gl = document.getElementById('game_canvas').getContext('webgl2');
@@ -190,7 +190,7 @@
 			},
 			// uniforms that will be passed into the shader to help draw the lights
 			uniforms: {
-				'uAmbientColor': VS.World.global.aUtils.grabColor('#000000').decimal,
+				'uAmbientColor': VS.global.aUtils.grabColor('#000000').decimal,
 				'uGlobalLight': 0.001, // linux devices need this value to be above 0 to render?
 				'uLights': new Float64Array(1012),
 				'uLightsCount': 0,
@@ -327,7 +327,7 @@
 				for (let index = 0, count = 0; index < this.lights.length * LIGHT_INDEX_GAP; index += LIGHT_INDEX_GAP, count++) {
 					this.uniforms.uLights[index + 0] = this.lights[count].xPos;
 					this.uniforms.uLights[index + 1] = this.lights[count].yPos;
-					this.uniforms.uLights[index + 2] = this.lights[count].color;
+					this.uniforms.uLights[index + 2] = this.lights[count].color.tint;
 					this.uniforms.uLights[index + 3] = this.lights[count].brightness;
 					this.uniforms.uLights[index + 4] = this.lights[count].size;
 				}
@@ -342,7 +342,7 @@
 					const index = (this.lights.indexOf(pLight) * LIGHT_INDEX_GAP);
 					this.uniforms.uLights[index + 0] = pLight.xPos;
 					this.uniforms.uLights[index + 1] = pLight.yPos;
-					this.uniforms.uLights[index + 2] = pLight.color;
+					this.uniforms.uLights[index + 2] = pLight.color.tint;
 					this.uniforms.uLights[index + 3] = pLight.brightness;
 					this.uniforms.uLights[index + 4] = pLight.size;
 				} else {
@@ -372,7 +372,7 @@
 
 				let xPos;
 				let yPos;
-				let color = VS.World.global.aUtils.grabColor('#FFFFFF').decimal;
+				let color = VS.global.aUtils.grabColor('#FFFFFF').decimal;
 				let brightness = 0;
 				let offset = { 'x': 0, 'y': 0 };
 				let size = 1;
@@ -473,7 +473,7 @@
 				// decimal
 				if (pSettings.color) {
 					if (typeof(pSettings.color) === 'number') {
-						color = VS.World.global.aUtils.grabColor(pSettings.color).decimal;
+						color = VS.global.aUtils.grabColor(pSettings.color).decimal;
 					} else {
 						if (this.debugging) console.warn('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.color', 'font-weight: bold', 'property. Reverted to default');
 					}
@@ -545,7 +545,7 @@
 				light.offset = offset;
 				light.xPos = xPos + light.offset.x;
 				light.yPos = yPos + light.offset.y;
-				light.color = color;
+				light.color = { tint: color };
 				light.originalBrightness = brightness;
 				light.brightness = brightness;
 				light.size = size;
@@ -555,19 +555,13 @@
 
 				if (owner) {
 					owner.attachedLights.push(light);
-					if (!owner.aLightOnRelocatedSet) {
-						owner._aLightOnRelocated = owner.onRelocated;
-						owner.aLightOnRelocatedSet = true;
-						owner.onRelocated = function(pX, pY, pMap, pMove) {
-							for (const attachedLight of this.attachedLights) {
-								attachedLight.xPos = this.getTrueCenterPos().x + attachedLight.offset.x;
-								attachedLight.yPos = this.getTrueCenterPos().y + attachedLight.offset.y;
-							}
-							if (this._aLightOnRelocated) {
-								this._aLightOnRelocated.apply(this, arguments);
-							}
+
+					VS.global.aListener.addEventListener(owner, 'onRelocated', function(pX, pY, pMap, pMove) {
+						for (const attachedLight of this.attachedLights) {
+							attachedLight.xPos = this.getTrueCenterPos().x + attachedLight.offset.x;
+							attachedLight.yPos = this.getTrueCenterPos().y + attachedLight.offset.y;
 						}
-					}
+					});
 				}
 				return light;
 			},
@@ -643,7 +637,7 @@
 							'xPos': this.mapPosTracker.x,
 							'yPos': this.mapPosTracker.y,
 							'offset': { 'x': 0, 'y': 0 },
-							'color': VS.World.global.aUtils.grabColor('#FFFFFF').decimal,
+							'color': VS.global.aUtils.grabColor('#FFFFFF').decimal,
 							'brightness': 30,
 							'size': 15,
 							'id': MOUSE_ID
@@ -672,16 +666,16 @@
 				const yDistance = Math.abs(this.centerScreenPos.y - pLight.yPos);
 				let scale;
 				if (pDimensionChanged === 'x') {
-					scale = VS.World.global.aUtils.normalize(xDistance, (pLight.cullDistance.x / VS.Client.mapView.scale.x), (pLight.fadeDistance.x / VS.Client.mapView.scale.x));
+					scale = VS.global.aUtils.normalize(xDistance, (pLight.cullDistance.x / VS.Client.mapView.scale.x), (pLight.fadeDistance.x / VS.Client.mapView.scale.x));
 				} else if (pDimensionChanged === 'y') {
-					scale = VS.World.global.aUtils.normalize(yDistance, (pLight.cullDistance.y / VS.Client.mapView.scale.y), (pLight.fadeDistance.y / VS.Client.mapView.scale.y));
+					scale = VS.global.aUtils.normalize(yDistance, (pLight.cullDistance.y / VS.Client.mapView.scale.y), (pLight.fadeDistance.y / VS.Client.mapView.scale.y));
 				} else if (pDimensionChanged === 'xy') {
 					const dimensionToUse = (xDistance > yDistance ? 'xDistance' : 'yDistance');
 					const cullDistanceToUse = (dimensionToUse === 'xDistance' ? xDistance : yDistance);
-					scale = VS.World.global.aUtils.normalize(cullDistanceToUse, (dimensionToUse === 'xDistance' ? (pLight.cullDistance.x / VS.Client.mapView.scale.x) : (pLight.cullDistance.y / VS.Client.mapView.scale.y)), (dimensionToUse === 'xDistance' ? (pLight.fadeDistance.x / VS.Client.mapView.scale.x) : (pLight.fadeDistance.y / VS.Client.mapView.scale.y)));
+					scale = VS.global.aUtils.normalize(cullDistanceToUse, (dimensionToUse === 'xDistance' ? (pLight.cullDistance.x / VS.Client.mapView.scale.x) : (pLight.cullDistance.y / VS.Client.mapView.scale.y)), (dimensionToUse === 'xDistance' ? (pLight.fadeDistance.x / VS.Client.mapView.scale.x) : (pLight.fadeDistance.y / VS.Client.mapView.scale.y)));
 				}
 				if (pDimensionChanged) pLight.brightness = VS.Math.clamp(scale * pLight.originalBrightness, -1, pLight.originalBrightness);
-				if (VS.World.global.aUtils.round(pLight.brightness) <= 0 || pForceCull) {
+				if (VS.global.aUtils.round(pLight.brightness) <= 0 || pForceCull) {
 					pLight.brightness = -1;
 					this.cull(pLight);
 				}
@@ -702,7 +696,7 @@
 			adjustAmbience: function (pAmbience = 0) {
 				if (pAmbience || pAmbience === 0) {
 					if (typeof(pAmbience) === 'number') {
-						this.uniforms.uAmbientColor = VS.World.global.aUtils.grabColor(pAmbience).decimal;
+						this.uniforms.uAmbientColor = VS.global.aUtils.grabColor(pAmbience).decimal;
 					} else {
 						console.error('aLight Module: Invalid %cambience format', 'font-weight: bold', 'Expected a decimal color. Reverted to default');
 						return;
@@ -714,7 +708,7 @@
 			}
 		};
 
-		VS.World.global.aLight = aLight;
+		VS.global.aLight = aLight;
 		VS.Client.aLight = aLight;
 		VS.Client.___EVITCA_aLight = true;
 
@@ -743,87 +737,57 @@
 			};
 		}
 		
-		if (!aLight.onScreenRenderSet) {
-			aLight._onScreenRender = VS.Client.onScreenRender;
-			aLight.onScreenRenderSet = true;
-			VS.Client.onScreenRender = function(pT) {
-				if (this.___EVITCA_aPause) {
-					if (this.aPause.paused) {
-						this.aLight.updateDelta.lastTime = pT;
-						return;
-					}
-				}
-				if (this.aLight.updateDelta.startTime === undefined) this.aLight.updateDelta.startTime = Date.now();
-				if (pT > this.aLight.updateDelta.lastTime) {
-					this.aLight.updateDelta.elapsedMS = pT - this.aLight.updateDelta.lastTime;
-					if (this.aLight.updateDelta.elapsedMS > MAX_ELAPSED_MS) {
-						// check here, if warnings are showing up about setInterval taking too long
-						this.aLight.updateDelta.elapsedMS = MAX_ELAPSED_MS;
-					}
-					this.aLight.updateDelta.deltaTime = (this.aLight.updateDelta.elapsedMS / TICK_FPS) * this.timeScale;
-					this.aLight.updateDelta.elapsedMS *= this.timeScale;
-				}
 
-				this.aLight.update(this.aLight.updateDelta.elapsedMS, this.aLight.updateDelta.deltaTime);
-				this.aLight.updateDelta.lastTime = pT;			
-				if (this.aLight._onScreenRender) {
-					this.aLight._onScreenRender.apply(this, arguments);
+		VS.global.aListener.addEventListener(VS.Client, 'onScreenRender', function(pT) {
+			if (this.___EVITCA_aPause) {
+				if (this.aPause.paused) {
+					this.aLight.updateDelta.lastTime = pT;
+					return;
 				}
 			}
-		}
-
-		// append code into the client's onMouseMove to update the mouse light if there is one
-		if (!aLight.onMouseMoveSet) {
-			aLight._onMouseMove = VS.Client.onMouseMove;
-			aLight.onMouseMoveSet = true;
-			VS.Client.onMouseMove = function(pDiob, pX, pY) {
-				if (aLight) {
-					if (aLight.mouseLight) {
-						this.getPosFromScreen(pX, pY, aLight.mapPosTracker);
-						aLight.mouseLight.xPos = aLight.mapPosTracker.x + aLight.mouseLight.offset.x;
-						aLight.mouseLight.yPos = aLight.mapPosTracker.y + aLight.mouseLight.offset.y;
-						aLight.addLightUniforms(aLight.mouseLight, true);
-					}
+			if (this.aLight.updateDelta.startTime === undefined) this.aLight.updateDelta.startTime = Date.now();
+			if (pT > this.aLight.updateDelta.lastTime) {
+				this.aLight.updateDelta.elapsedMS = pT - this.aLight.updateDelta.lastTime;
+				if (this.aLight.updateDelta.elapsedMS > MAX_ELAPSED_MS) {
+					// check here, if warnings are showing up about setInterval taking too long
+					this.aLight.updateDelta.elapsedMS = MAX_ELAPSED_MS;
 				}
-				if (this.aLight._onMouseMove) {
-					this.aLight._onMouseMove.apply(this, arguments);
+				this.aLight.updateDelta.deltaTime = (this.aLight.updateDelta.elapsedMS / TICK_FPS) * this.timeScale;
+				this.aLight.updateDelta.elapsedMS *= this.timeScale;
+			}
+
+			this.aLight.update(this.aLight.updateDelta.elapsedMS, this.aLight.updateDelta.deltaTime);
+			this.aLight.updateDelta.lastTime = pT;
+		});
+
+		VS.global.aListener.addEventListener(VS.Client, 'onMouseMove', function(pDiob, pX, pY) {
+			if (aLight) {
+				if (aLight.mouseLight) {
+					this.getPosFromScreen(pX, pY, aLight.mapPosTracker);
+					aLight.mouseLight.xPos = aLight.mapPosTracker.x + aLight.mouseLight.offset.x;
+					aLight.mouseLight.yPos = aLight.mapPosTracker.y + aLight.mouseLight.offset.y;
+					aLight.addLightUniforms(aLight.mouseLight, true);
 				}
 			}
-		}
+		});
 
-		// append code into the client's onWindowResize to update the library's window size object
-		if (!aLight.onWindowResizeSet) {
-			aLight._onWindowResize = VS.Client.onWindowResize;
-			aLight.onWindowResizeSet = true;
-			VS.Client.onWindowResize = function(pWidth, pHeight) {
-				if (aLight) {
-					aLight.windowSize.width = pWidth;
-					aLight.windowSize.height = pHeight;
-					aLight.uniforms.uWindowSize.x = pWidth;
-					aLight.uniforms.uWindowSize.y = pHeight;
-				}
-				if (this.aLight._onWindowResize) {
-					this.aLight._onWindowResize.apply(this, arguments);
-				}
+		VS.global.aListener.addEventListener(VS.Client, 'onWindowResize', function(pWidth, pHeight) {
+			if (aLight) {
+				aLight.windowSize.width = pWidth;
+				aLight.windowSize.height = pHeight;
+				aLight.uniforms.uWindowSize.x = pWidth;
+				aLight.uniforms.uWindowSize.y = pHeight;
 			}
-		}
+		});
 
-		// append code into the client's onScreenMoved to update the library's screen position object
-		if (!aLight.onScreenMovedSet) {
-			aLight._onScreenMoved = VS.Client.onScreenMoved;
-			aLight.onScreenMovedSet = true;
-			VS.Client.onScreenMoved = function(pX, pY, pOldX, pOldY) {
-				if (aLight) {
-					aLight.screenPos.x = pX;
-					aLight.screenPos.y = pY;
-					aLight.uniforms.uScreenPos.x = pX;
-					aLight.uniforms.uScreenPos.y = pY;
-				}
-				if (this.aLight._onScreenMoved) {
-					this.aLight._onScreenMoved.apply(this, arguments);
-				}
+		VS.global.aListener.addEventListener(VS.Client, 'onScreenMoved', function(pX, pY, pOldX, pOldY) {
+			if (aLight) {
+				aLight.screenPos.x = pX;
+				aLight.screenPos.y = pY;
+				aLight.uniforms.uScreenPos.x = pX;
+				aLight.uniforms.uScreenPos.y = pY;
 			}
-		}
+		});
 
 		VS.Client.addFilter('LightShader', 'custom', { 'filter': new PIXI.Filter(aLightVertexShader, aLightFragmentShader, aLight.uniforms) });
 	}
