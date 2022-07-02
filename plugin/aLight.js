@@ -2,6 +2,8 @@
 	let gl;
 	let program;
 	let foundClient;
+	const glSupported = document.createElement('canvas').getContext('webgl2') ? true : false;
+	if (!glSupported) console.error('Your browser/OS/drivers do not support WebGL2');
 	// Client Library
 	const engineWaitId = setInterval(() => {
 		if (VS.Client && VS.Client.___EVITCA_aUtils && !foundClient) {
@@ -279,14 +281,21 @@
 			toggleDebug: function () {
 				this.debugging = !this.debugging;
 			},
-			generateToken: function (pTokenLength = 7) {
-				let token = '';
-				const chars = '0123456789';
-
-				for (let i = 0; i < pTokenLength; i++) {
-					token += chars.charAt(Math.floor(Math.random() * chars.length));
+			generateID: function (pID = 7) {
+				const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+				const makeID = function() {
+					let ID = '';
+					for (let i = 0; i < pID; i++) {
+						ID += chars.charAt(Math.floor(Math.random() * chars.length));
+					}
+					return ID;
 				}
-				return Number(token);
+				let ID = makeID();
+				while(this.storedIDs.includes(ID)) {
+					ID = makeID();
+				}
+				this.storedIDs.push(ID);
+				return ID;
 			},
 			getLightById: function (pID) {
 				if (pID) {
@@ -350,6 +359,7 @@
 				}
 			},
 			destroyLight: function (pID) {
+				if (!glSupported) return;
 				const light = this.getLightById(pID);
 				if (light) {
 					if (this.reservedLightIDS.includes(pID)) this.reservedLightIDS.splice(this.reservedLightIDS.indexOf(pID), 1);
@@ -364,6 +374,7 @@
 				if (this.debugging) VS.Client.aMes('aLight [Active Lights]: ' + this.uniforms.uLightsCount + ' aLight [Culled Lights]: ' + this.culledLights.length);
 			},
 			createLight: function (pSettings) {
+				if (!glSupported) return;
 				if (this.lights.length/*  + this.culledLights.length */ >= MAX_LIGHTS) {
 					if (this.debugging) console.error('aLight Module: %cMAX_LIGHTS', 'font-weight: bold', 'reached.');
 					return;
@@ -566,6 +577,7 @@
 				return light;
 			},
 			detachLight: function (pDiob, pID) {
+				if (!glSupported) return;
 				if (pDiob) {
 					if (typeof(pDiob) === 'object') {
 						if (pID) {
@@ -601,14 +613,17 @@
 				}
 			},
 			attachLight: function (pDiob, pSettings) {
+				if (!glSupported) return;
 				pSettings.owner = pDiob;
 				this.createLight(pSettings);
 			},
 			detachMouseLight: function () {
+				if (!glSupported) return;
 				this.destroyLight(MOUSE_ID);
 				this.mouseLight = null;
 			},
 			attachMouseLight: function (pSettings) {
+				if (!glSupported) return;
 				if (!this.mouseLight) {
 					if (pSettings) {
 						if (typeof(pSettings) === 'object') {
@@ -681,6 +696,7 @@
 				}
 			},
 			adjustGlobalLight: function (pValue) {
+				if (!glSupported) return;
 				if (pValue || pValue === 0) {
 					if (typeof(pValue) === 'number') {
 						this.uniforms.uGlobalLight = pValue;
@@ -694,6 +710,7 @@
 				}
 			},
 			adjustAmbience: function (pAmbience = 0) {
+				if (!glSupported) return;
 				if (pAmbience || pAmbience === 0) {
 					if (typeof(pAmbience) === 'number') {
 						this.uniforms.uAmbientColor = VS.global.aUtils.grabColor(pAmbience).decimal;
@@ -737,59 +754,60 @@
 			};
 		}
 		
-
-		VS.global.aListener.addEventListener(VS.Client, 'onScreenRender', function(pT) {
-			if (this.___EVITCA_aPause) {
-				if (this.aPause.paused) {
-					this.aLight.updateDelta.lastTime = pT;
-					return;
+		if (glSupported) {
+			VS.global.aListener.addEventListener(VS.Client, 'onScreenRender', function(pT) {
+				if (this.___EVITCA_aPause) {
+					if (this.aPause.paused) {
+						this.aLight.updateDelta.lastTime = pT;
+						return;
+					}
 				}
-			}
-			if (this.aLight.updateDelta.startTime === undefined) this.aLight.updateDelta.startTime = Date.now();
-			if (pT > this.aLight.updateDelta.lastTime) {
-				this.aLight.updateDelta.elapsedMS = pT - this.aLight.updateDelta.lastTime;
-				if (this.aLight.updateDelta.elapsedMS > MAX_ELAPSED_MS) {
-					// check here, if warnings are showing up about setInterval taking too long
-					this.aLight.updateDelta.elapsedMS = MAX_ELAPSED_MS;
+				if (this.aLight.updateDelta.startTime === undefined) this.aLight.updateDelta.startTime = Date.now();
+				if (pT > this.aLight.updateDelta.lastTime) {
+					this.aLight.updateDelta.elapsedMS = pT - this.aLight.updateDelta.lastTime;
+					if (this.aLight.updateDelta.elapsedMS > MAX_ELAPSED_MS) {
+						// check here, if warnings are showing up about setInterval taking too long
+						this.aLight.updateDelta.elapsedMS = MAX_ELAPSED_MS;
+					}
+					this.aLight.updateDelta.deltaTime = (this.aLight.updateDelta.elapsedMS / TICK_FPS) * this.timeScale;
+					this.aLight.updateDelta.elapsedMS *= this.timeScale;
 				}
-				this.aLight.updateDelta.deltaTime = (this.aLight.updateDelta.elapsedMS / TICK_FPS) * this.timeScale;
-				this.aLight.updateDelta.elapsedMS *= this.timeScale;
-			}
 
-			this.aLight.update(this.aLight.updateDelta.elapsedMS, this.aLight.updateDelta.deltaTime);
-			this.aLight.updateDelta.lastTime = pT;
-		});
-
-		VS.global.aListener.addEventListener(VS.Client, 'onMouseMove', function(pDiob, pX, pY) {
-			if (aLight) {
-				if (aLight.mouseLight) {
-					this.getPosFromScreen(pX, pY, aLight.mapPosTracker);
-					aLight.mouseLight.xPos = aLight.mapPosTracker.x + aLight.mouseLight.offset.x;
-					aLight.mouseLight.yPos = aLight.mapPosTracker.y + aLight.mouseLight.offset.y;
-					aLight.addLightUniforms(aLight.mouseLight, true);
+				this.aLight.update(this.aLight.updateDelta.elapsedMS, this.aLight.updateDelta.deltaTime);
+				this.aLight.updateDelta.lastTime = pT;
+			});
+		
+			VS.global.aListener.addEventListener(VS.Client, 'onMouseMove', function(pDiob, pX, pY) {
+				if (aLight) {
+					if (aLight.mouseLight) {
+						this.getPosFromScreen(pX, pY, aLight.mapPosTracker);
+						aLight.mouseLight.xPos = aLight.mapPosTracker.x + aLight.mouseLight.offset.x;
+						aLight.mouseLight.yPos = aLight.mapPosTracker.y + aLight.mouseLight.offset.y;
+						aLight.addLightUniforms(aLight.mouseLight, true);
+					}
 				}
-			}
-		});
+			});
 
-		VS.global.aListener.addEventListener(VS.Client, 'onWindowResize', function(pWidth, pHeight) {
-			if (aLight) {
-				aLight.windowSize.width = pWidth;
-				aLight.windowSize.height = pHeight;
-				aLight.uniforms.uWindowSize.x = pWidth;
-				aLight.uniforms.uWindowSize.y = pHeight;
-			}
-		});
+			VS.global.aListener.addEventListener(VS.Client, 'onWindowResize', function(pWidth, pHeight) {
+				if (aLight) {
+					aLight.windowSize.width = pWidth;
+					aLight.windowSize.height = pHeight;
+					aLight.uniforms.uWindowSize.x = pWidth;
+					aLight.uniforms.uWindowSize.y = pHeight;
+				}
+			});
 
-		VS.global.aListener.addEventListener(VS.Client, 'onScreenMoved', function(pX, pY, pOldX, pOldY) {
-			if (aLight) {
-				aLight.screenPos.x = pX;
-				aLight.screenPos.y = pY;
-				aLight.uniforms.uScreenPos.x = pX;
-				aLight.uniforms.uScreenPos.y = pY;
-			}
-		});
+			VS.global.aListener.addEventListener(VS.Client, 'onScreenMoved', function(pX, pY, pOldX, pOldY) {
+				if (aLight) {
+					aLight.screenPos.x = pX;
+					aLight.screenPos.y = pY;
+					aLight.uniforms.uScreenPos.x = pX;
+					aLight.uniforms.uScreenPos.y = pY;
+				}
+			});
 
-		VS.Client.addFilter('LightShader', 'custom', { 'filter': new PIXI.Filter(aLightVertexShader, aLightFragmentShader, aLight.uniforms) });
+			VS.Client.addFilter('LightShader', 'custom', { 'filter': new PIXI.Filter(aLightVertexShader, aLightFragmentShader, aLight.uniforms) });
+		}
 	}
 }
 )();
