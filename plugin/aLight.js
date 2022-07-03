@@ -727,6 +727,7 @@
 
 		VS.global.aLight = aLight;
 		VS.Client.aLight = aLight;
+		window.aLight = aLight;
 		VS.Client.___EVITCA_aLight = true;
 
 		VS.Client.getScreenPos(aLight.screenPos);
