@@ -45,8 +45,6 @@ A powerful plugin to help bring some fabulous lighting to your game.
 ###  aLight.attachLight(pDiob, pSettings)  
    - `pDiob`: The diob to attach this light to  `object`
    - `pSettings`: The settings this light will use  `object`  
-   - `pSettings.xPos`: The xPos at which this light will be placed *uses map position*  `number`  
-   - `pSettings.yPos`: The yPos at which this light will be placed *uses map position*  `number`  
    - `pSettings.color`: The color this light will emit in decimal color format  `number`  
    - `pSettings.size`: The size of this light *this works in tandem with pSettings.brightness*  `number`  
    - `pSettings.brightness`: How much light is emitted *this works in tandem with pSettings.size*   `number`  
