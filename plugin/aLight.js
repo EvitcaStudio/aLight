@@ -349,8 +349,14 @@
 						if (this.debugging) VS.Client.aMes('aLight [Active Lights]: ' + this.uniforms.uLightsCount + ' aLight [Culled Lights]: ' + this.culledLights.length);
 					}
 					const index = (this.lights.indexOf(pLight) * LIGHT_INDEX_GAP);
-					this.uniforms.uLights[index + 0] = pLight.xPos;
-					this.uniforms.uLights[index + 1] = pLight.yPos;
+					let offsetX = 0;
+					let offsetY = 0;
+					if (pLight.id === MOUSE_ID) {
+						offsetX = (VS.Client.mapView.xPos || VS.Client.mapView.xPos === 0 ? (Math.sign(VS.Client.mapView.xPos) === 1 ? VS.Client.mapView.xPos * -1 : 0) : 0);
+						offsetY = (VS.Client.mapView.yPos || VS.Client.mapView.yPos === 0 ? (Math.sign(VS.Client.mapView.yPos) === 1 ? VS.Client.mapView.yPos * -1 : 0) : 0);
+					}
+					this.uniforms.uLights[index + 0] = pLight.xPos + offsetX;
+					this.uniforms.uLights[index + 1] = pLight.yPos + offsetY;
 					this.uniforms.uLights[index + 2] = pLight.color.tint;
 					this.uniforms.uLights[index + 3] = pLight.brightness;
 					this.uniforms.uLights[index + 4] = pLight.size;
@@ -553,9 +559,15 @@
 				const light = {};
 				light.owner = owner;
 				light.id = ID;
+				let offsetX = 0;
+				let offsetY = 0;
+				if (light.id === MOUSE_ID) {
+					offsetX = (VS.Client.mapView.xPos || VS.Client.mapView.xPos === 0 ? (Math.sign(VS.Client.mapView.xPos) === 1 ? VS.Client.mapView.xPos * -1 : 0) : 0);
+					offsetY = (VS.Client.mapView.yPos || VS.Client.mapView.yPos === 0 ? (Math.sign(VS.Client.mapView.yPos) === 1 ? VS.Client.mapView.yPos * -1 : 0) : 0);
+				}
 				light.offset = offset;
-				light.xPos = xPos + light.offset.x;
-				light.yPos = yPos + light.offset.y;
+				light.xPos = xPos + light.offset.x + offsetX;
+				light.yPos = yPos + light.offset.y + offsetY;
 				light.color = { tint: color };
 				light.originalBrightness = brightness;
 				light.brightness = brightness;
