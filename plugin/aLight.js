@@ -203,6 +203,10 @@
 				'uMapView': [1, 1, 0.5, 0.5], // scaleX, scaleY, anchor.x, anchor.y
 				'uMapPos': { 'x': 1, 'y': 1 }
 			},
+			isInCullingRange: function(pLight) {
+				const inCullingRange = Math.abs(this.centerScreenPos.x - pLight.xPos) >= (pLight.cullDistance.x / VS.Client.mapView.scale.x) || Math.abs(this.centerScreenPos.y - pLight.yPos) >= (pLight.cullDistance.y / VS.Client.mapView.scale.x);
+				return inCullingRange;
+			},
 			// update loop that updates the lights and checks if a light needs to be culled
 			update: function(pElapsedMS, pDeltaTime) {
 				// the elapsed MS since the start time
@@ -234,10 +238,8 @@
 						continue;
 					}
 
-					const inCullingRange = Math.abs(this.centerScreenPos.x - light.xPos) >= (light.cullDistance.x / VS.Client.mapView.scale.x) || Math.abs(this.centerScreenPos.y - light.yPos) >= (light.cullDistance.y / VS.Client.mapView.scale.x);
-
-					if ((light.fadeDistance.x || light.fadeDistance.y) && screenCenterChanged && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
-						if (inCullingRange) {
+					if (light.cullable && screenCenterChanged) {
+						if (this.isInCullingRange(light)) {
 							this.cullFactor(light, true, screenCenterChanged);
 							continue;
 						} else {
@@ -261,9 +263,11 @@
 							}
 						}
 					} else {
-						if (inCullingRange && (light.cullDistance.x !== -1 && light.cullDistance.y !== -1)) {
-							this.cull(light);
-							continue;
+						if (light.cullable) {
+							if (this.isInCullingRange(light)) {
+								this.cull(light);
+								continue;
+							}
 						}
 					}
 					this.addLightUniforms(light, true);
@@ -271,8 +275,7 @@
 
 				for (let lightIndex = this.culledLights.length - 1; lightIndex >= 0; lightIndex--) {
 					const light = this.culledLights[lightIndex];
-					const inCullingRange = Math.abs(this.centerScreenPos.x - light.xPos) >= (light.cullDistance.x / VS.Client.mapView.scale.x) || Math.abs(this.centerScreenPos.y - light.yPos) >= (light.cullDistance.y / VS.Client.mapView.scale.y);
-					if (!inCullingRange) {
+					if (!this.isInCullingRange(light)) {
 						this.uncull(light, lightIndex);
 					}
 				}
@@ -332,7 +335,9 @@
 					return;
 				}
 				this.uniforms.uLightsCount--;
+				// Wipe the entire array
 				this.uniforms.uLights.forEach((pElement, pIndex, pArray) => { if (pElement !== 0) pArray[pIndex] = 0; });
+				// Readd each light to the array
 				for (let index = 0, count = 0; index < this.lights.length * LIGHT_INDEX_GAP; index += LIGHT_INDEX_GAP, count++) {
 					this.uniforms.uLights[index + 0] = this.lights[count].xPos;
 					this.uniforms.uLights[index + 1] = this.lights[count].yPos;
@@ -393,6 +398,7 @@
 				let brightness = 0;
 				let offset = { 'x': 0, 'y': 0 };
 				let size = 1;
+				let cullable;
 				// a value of -1 for the x and y means it will not be apart of the culling system
 				let cullDistance = { 'x': -1, 'y': -1 };
 				let fadeDistance = { 'x': 0, 'y': 0 };
@@ -515,10 +521,12 @@
 					if (typeof(pSettings.cullDistance) === 'number') {
 						cullDistance.x = pSettings.cullDistance / VS.Client.mapView.scale.x;
 						cullDistance.y = pSettings.cullDistance / VS.Client.mapView.scale.y;
+						cullable = true;
 					} else if (typeof(pSettings.cullDistance) === 'object') {
 						if (typeof(pSettings.cullDistance.x) === 'number' && typeof(pSettings.cullDistance.y) === 'number') {
 							cullDistance.x = pSettings.cullDistance.x / VS.Client.mapView.scale.x;
 							cullDistance.y = pSettings.cullDistance.y / VS.Client.mapView.scale.y;
+							cullable = true;
 						} else {
 							console.error('aLight Module [Light ID: \'' + ID + '\']: Invalid variable type passed for the %cpSettings.cullDistance.x || pSettings.cullDistance.y', 'font-weight: bold', 'property.');
 							return;
@@ -571,6 +579,7 @@
 				light.color = { tint: color };
 				light.originalBrightness = brightness;
 				light.brightness = brightness;
+				light.cullable = cullable;
 				light.size = size;
 				light.cullDistance = cullDistance;
 				light.fadeDistance = fadeDistance;
