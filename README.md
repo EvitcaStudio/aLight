@@ -49,7 +49,7 @@ A powerful plugin to help bring some fabulous lighting to your game.
    - `pSettings.color`: The color this light will emit in decimal color format  `number`  
    - `pSettings.size`: The size of this light *this works in tandem with pSettings.brightness*  `number`  
    - `pSettings.brightness`: How much light is emitted *this works in tandem with pSettings.size*   `number`  
-   - `pSettings.center`: To center the light on pDiob's icon.  `boolean`  
+   - `pSettings.center`: To center the light on `pDiob's` icon.  `boolean`  
    - `pSettings.offset`: The offset(s) of this light. If an object is used it will use the object's `.x` and `.y` properties for offsets in each axis. `number|object`      
    - `pSettings.cullDistance`: The `cullingDistance` of this light, when this light is `cullingDistance` away it will be removed from the screen. If an object is used it will use the object's `.x` and `.y` properties for offsets in each axis `number|object`  
    - `pSettings.fadeDistance`: The `fadingDistance` of this light, when this light is `fadingDistance` away it will begin fading out as you move away from it until it reaches the `cullingDistance` and the light is culled. If an object is used it will use the object's `.x` and `.y` properties for offsets in each axis `number|object`     
