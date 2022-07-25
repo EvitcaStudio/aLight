@@ -3,6 +3,7 @@ A powerful plugin to help bring some fabulous lighting to your game.
 
 ## Implementation (`Client-Side-Only`)
 ### Requires [aListener](https://github.com/EvitcaStudio/aListener)  `client-side`  
+### Requires [aUtils](https://github.com/EvitcaStudio/aUtils)  `client-side`  
 #### #INCLUDE SCRIPT aLight.js  
 
 ## How to reference  
@@ -22,7 +23,7 @@ A powerful plugin to help bring some fabulous lighting to your game.
    - `desc`: The ambience color of the screen  
 
 ###  aLight.adjustGlobalLight(pGlobalLight)  
-   - `pGlobalLight`: The brightness level of the scene. 0-1 range.  `0` being completely dark, `1` being completely lit  `number`  
+   - `pGlobalLight`: The brightness level of the scene. `-Infinity - Infinity` range.  `0` being completely dark, `1` being completely lit  `number`  
    - `desc`: Adjusts the overall brightness of the scene. *(The scene starts off at a `brightness level of 0` meaning the screen will be black)*     
 
 ###  aLight.createLight(pSettings)
@@ -48,6 +49,7 @@ A powerful plugin to help bring some fabulous lighting to your game.
    - `pSettings.color`: The color this light will emit in decimal color format  `number`  
    - `pSettings.size`: The size of this light *this works in tandem with pSettings.brightness*  `number`  
    - `pSettings.brightness`: How much light is emitted *this works in tandem with pSettings.size*   `number`  
+   - `pSettings.center`: To center the light on pDiob's icon.  `boolean`  
    - `pSettings.offset`: The offset(s) of this light. If an object is used it will use the object's `.x` and `.y` properties for offsets in each axis. `number|object`      
    - `pSettings.cullDistance`: The `cullingDistance` of this light, when this light is `cullingDistance` away it will be removed from the screen. If an object is used it will use the object's `.x` and `.y` properties for offsets in each axis `number|object`  
    - `pSettings.fadeDistance`: The `fadingDistance` of this light, when this light is `fadingDistance` away it will begin fading out as you move away from it until it reaches the `cullingDistance` and the light is culled. If an object is used it will use the object's `.x` and `.y` properties for offsets in each axis `number|object`     
