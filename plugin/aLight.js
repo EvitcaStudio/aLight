@@ -395,6 +395,7 @@
 				let xPos;
 				let yPos;
 				let color = VS.global.aUtils.grabColor('#FFFFFF').decimal;
+				let center;
 				let brightness = 0;
 				let offset = { 'x': 0, 'y': 0 };
 				let size = 1;
@@ -428,6 +429,7 @@
 									pSettings.owner.attachedLights = [];
 								}
 								if (pSettings.center) {
+									center = true;
 									this.assignIconSize(pSettings.owner);
 									xPos = pSettings.owner.getTrueCenterPos().x;
 									yPos = pSettings.owner.getTrueCenterPos().y;
@@ -574,6 +576,7 @@
 					offsetY = (VS.Client.mapView.yPos || VS.Client.mapView.yPos === 0 ? (Math.sign(VS.Client.mapView.yPos) === 1 ? VS.Client.mapView.yPos * -1 : 0) : 0);
 				}
 				light.offset = offset;
+				light.center = center;
 				light.xPos = xPos + light.offset.x + offsetX;
 				light.yPos = yPos + light.offset.y + offsetY;
 				light.color = { tint: color };
@@ -590,8 +593,13 @@
 
 					VS.global.aListener.addEventListener(owner, 'onRelocated', function(pX, pY, pMap, pMove) {
 						for (const attachedLight of this.attachedLights) {
-							attachedLight.xPos = this.getTrueCenterPos().x + attachedLight.offset.x;
-							attachedLight.yPos = this.getTrueCenterPos().y + attachedLight.offset.y;
+							if (attachedLight.center) {
+								attachedLight.xPos = this.getTrueCenterPos().x + attachedLight.offset.x;
+								attachedLight.yPos = this.getTrueCenterPos().y + attachedLight.offset.y;
+							} else {
+								attachedLight.xPos = this.xPos + attachedLight.offset.x;
+								attachedLight.yPos = this.yPos + attachedLight.offset.y;
+							}
 						}
 					});
 				}
