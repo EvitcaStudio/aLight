@@ -22,7 +22,7 @@ A powerful plugin to help bring some fabulous lighting to your game.
    - `desc`: The ambience color of the screen  
 
 ###  aLight.adjustGlobalLight(pGlobalLight)  
-   - `pGlobalLight`: The brightness level of the scene. 0-1 range.  `0` being completely dark, `1` being completely lit  `number`  
+   - `pGlobalLight`: The brightness level of the scene. `-Infinity - Infinity` range.  `0` being completely dark, `1` being completely lit  `number`  
    - `desc`: Adjusts the overall brightness of the scene. *(The scene starts off at a `brightness level of 0` meaning the screen will be black)*     
 
 ###  aLight.createLight(pSettings)
