@@ -3,6 +3,7 @@ A powerful plugin to help bring some fabulous lighting to your game.
 
 ## Implementation (`Client-Side-Only`)
 ### Requires [aListener](https://github.com/EvitcaStudio/aListener)  `client-side`  
+### Requires [aUtils](https://github.com/EvitcaStudio/aUtils)  `client-side`  
 #### #INCLUDE SCRIPT aLight.js  
 
 ## How to reference  
